@@ -3,16 +3,16 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>곱셈 연습 4 - 수학 학습</title>
+    <title>억을 알아보기 - 큰 수 학습</title>
     <link rel="stylesheet" href="style.css" />
   </head>
   <body>
     <div class="container">
+      <!-- 네비게이션 -->
       <div class="navigation">
         <a href="page3.html" class="nav-button">⬅️ 이전</a>
-        <a href="index.html" class="nav-button home-button">🏠 홈으로</a>
         <div class="page-info">
-          <div>곱셈 연습 4</div>
+          <div>억을 알아보기</div>
           <div class="progress-bar">
             <div class="progress-fill" style="width: 57.1%"></div>
           </div>
@@ -21,128 +21,54 @@
         <a href="page5.html" class="nav-button">다음 ➡️</a>
       </div>
 
-      <h1>곱셈 연습 4</h1>
+      <h1>4차시 | 억을 알아보기</h1>
+
+      <div class="lesson-description">
+        <div class="big-number-display">
+          <span class="number red">1</span>
+          <span class="number green">0000</span>
+          <span class="number blue">0000</span>
+          <span class="number orange">0000</span>
+        </div>
+        <div class="unit-labels">
+          <span class="label">억</span>
+          <span class="label">만</span>
+          <span class="label">일</span>
+        </div>
+        <div class="speech-bubble">
+          <p>1억은 1000만이 10개인 수에요!</p>
+        </div>
+      </div>
 
       <div class="problem-section">
-        <div class="problem-number">4</div>
-        <div class="instruction">안에 알맞은 수를 써넣으세요.</div>
+        <div class="problem-number">문제</div>
+        <div class="instruction">빈칸에 알맞은 수를 써넣으세요.</div>
 
-        <div class="math-problem">
-          <div class="equation-row">
-            <span class="number">428</span>
-            <span class="operator">×</span>
-            <span class="number">3</span>
-            <span class="equals">=</span>
+        <div class="eok-problems">
+          <div class="eok-row">
+            <span class="text">1000만이 10개인 수는</span>
             <input
               type="text"
-              class="answer-input"
-              id="answer1"
-              maxlength="4"
+              class="eok-input"
+              id="eok1"
+              maxlength="10"
+              placeholder="____"
             />
+            <span class="text">이라 씁니다.</span>
           </div>
 
-          <div class="arrow">↓</div>
-
-          <div class="equation-row">
-            <span class="number">428</span>
-            <span class="operator">×</span>
-            <span class="number">30</span>
-            <span class="equals">=</span>
+          <div class="place-value-row">
+            <span class="text"
+              >1억이 8670개, 1만이 1593개, 1이 4260개인 수는</span
+            >
             <input
               type="text"
-              class="answer-input"
-              id="answer2"
-              maxlength="5"
+              class="eok-input large"
+              id="place1"
+              maxlength="20"
+              placeholder="____"
             />
-          </div>
-        </div>
-
-        <div class="vertical-multiplication">
-          <div class="multiplication-problem">
-            <div class="multiplicand">
-              <span>5</span>
-              <span>6</span>
-              <span>7</span>
-            </div>
-            <div class="multiplier">
-              <span>×</span>
-              <span class="multiplier-digit">2</span>
-            </div>
-            <div class="line"></div>
-            <div class="result">
-              <input
-                type="text"
-                class="digit-input"
-                id="digit1"
-                maxlength="1"
-              />
-              <input
-                type="text"
-                class="digit-input"
-                id="digit2"
-                maxlength="1"
-              />
-              <input
-                type="text"
-                class="digit-input"
-                id="digit3"
-                maxlength="1"
-              />
-              <input
-                type="text"
-                class="digit-input"
-                id="digit4"
-                maxlength="1"
-              />
-            </div>
-          </div>
-
-          <div class="arrow-right">→</div>
-
-          <div class="multiplication-problem">
-            <div class="multiplicand">
-              <span>5</span>
-              <span>6</span>
-              <span>7</span>
-            </div>
-            <div class="multiplier">
-              <span>×</span>
-              <span class="multiplier-digit">2</span>
-              <span class="multiplier-digit">0</span>
-            </div>
-            <div class="line"></div>
-            <div class="result">
-              <input
-                type="text"
-                class="digit-input"
-                id="digit5"
-                maxlength="1"
-              />
-              <input
-                type="text"
-                class="digit-input"
-                id="digit6"
-                maxlength="1"
-              />
-              <input
-                type="text"
-                class="digit-input"
-                id="digit7"
-                maxlength="1"
-              />
-              <input
-                type="text"
-                class="digit-input"
-                id="digit8"
-                maxlength="1"
-              />
-              <input
-                type="text"
-                class="digit-input"
-                id="digit9"
-                maxlength="1"
-              />
-            </div>
+            <span class="text">입니다.</span>
           </div>
         </div>
 
@@ -156,6 +82,56 @@
     </div>
 
     <script src="config.js"></script>
-    <script src="page-script.js"></script>
+    <script>
+      // 페이지 4 전용 스크립트
+      const answers = {
+        eok1: "1억",
+        place1: "867015934260",
+      };
+
+      document
+        .getElementById("checkAnswer")
+        .addEventListener("click", function () {
+          let allCorrect = true;
+          let correctCount = 0;
+          const totalQuestions = Object.keys(answers).length;
+
+          for (let id in answers) {
+            const input = document.getElementById(id);
+            const userAnswer = input.value.trim();
+
+            if (userAnswer === answers[id]) {
+              input.style.backgroundColor = "#d4edda";
+              input.style.borderColor = "#28a745";
+              correctCount++;
+            } else {
+              input.style.backgroundColor = "#f8d7da";
+              input.style.borderColor = "#dc3545";
+              allCorrect = false;
+            }
+          }
+
+          const result = document.getElementById("result");
+          if (allCorrect) {
+            result.textContent = `완벽합니다! 🎉 모든 문제를 맞혔어요!`;
+            result.className = "result-message correct";
+          } else {
+            result.textContent = `${correctCount}/${totalQuestions} 정답입니다. 다시 한번 생각해보세요!`;
+            result.className = "result-message partial";
+          }
+        });
+
+      document
+        .getElementById("resetAnswer")
+        .addEventListener("click", function () {
+          for (let id in answers) {
+            const input = document.getElementById(id);
+            input.value = "";
+            input.style.backgroundColor = "";
+            input.style.borderColor = "";
+          }
+          document.getElementById("result").textContent = "";
+        });
+    </script>
   </body>
 </html>

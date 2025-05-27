@@ -3,58 +3,64 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>수학 학습 웹페이지</title>
+    <title>큰 수 학습 웹페이지</title>
     <link rel="stylesheet" href="style.css" />
   </head>
   <body>
         <div class="container">
-        <h1>수학 학습 웹페이지</h1>
+        <h1>큰 수 학습 웹페이지</h1>
         
         <div class="main-menu">
-            <h2>곱셈 연습 문제</h2>
-            <p class="description">아래 문제 중 하나를 선택하여 연습해보세요!</p>
+            <h2>큰 수 알아보기</h2>
+            <p class="description">아래 학습 단계를 순서대로 진행해보세요!</p>
             
             <div class="page-grid">
                 <a href="page1.html" class="page-card">
                     <div class="page-number">1</div>
-                    <h3>곱셈 연습 1</h3>
-                    <p>375 × 5, 461 × 3</p>
+                    <h3>만 알아보기</h3>
+                    <p>1000의 10개인 수를 10000 또는 1만이라 쓰고 읽습니다</p>
                 </a>
                 
                 <a href="page2.html" class="page-card">
                     <div class="page-number">2</div>
-                    <h3>곱셈 연습 2</h3>
-                    <p>284 × 6, 352 × 4</p>
+                    <h3>다섯 자리 수 알아보기</h3>
+                    <p>46571 -> 4만 6천 5백 7십 1</p>
                 </a>
                 
                 <a href="page3.html" class="page-card">
                     <div class="page-number">3</div>
-                    <h3>곱셈 연습 3</h3>
-                    <p>196 × 7, 273 × 5</p>
+                    <h3>십만, 백만, 천만을 알아보기</h3>
+                    <p>1만 -> 10만 -> 100만 -> 1000만</p>
                 </a>
                 
                 <a href="page4.html" class="page-card">
                     <div class="page-number">4</div>
-                    <h3>곱셈 연습 4</h3>
-                    <p>428 × 3, 567 × 2</p>
+                    <h3>억을 알아보기</h3>
+                    <p>1억은 1000만이 10개인 수에요!</p>
                 </a>
                 
                 <a href="page5.html" class="page-card">
                     <div class="page-number">5</div>
-                    <h3>곱셈 연습 5</h3>
-                    <p>315 × 8, 492 × 6</p>
+                    <h3>조를 알아보기</h3>
+                    <p>1조는 1000억이 10개인 수에요!</p>
                 </a>
                 
                 <a href="page6.html" class="page-card">
                     <div class="page-number">6</div>
-                    <h3>곱셈 연습 6</h3>
-                    <p>638 × 4, 729 × 3</p>
+                    <h3>뛰어세기</h3>
+                    <p>만씩 뛰어세기: 만의 자리 숫자가 1씩 커져</p>
                 </a>
                 
                 <a href="page7.html" class="page-card">
                     <div class="page-number">7</div>
-                    <h3>곱셈 연습 7</h3>
-                    <p>856 × 5, 943 × 7</p>
+                    <h3>수의 크기를 비교하기</h3>
+                    <p>두 수의 크기를 비교해보세요</p>
+                </a>
+                
+                <a href="certificate.html" class="page-card certificate-card">
+                    <div class="page-number">🏆</div>
+                    <h3>학습 완료 증명서</h3>
+                    <p>모든 학습을 완료하고 증명서를 받아보세요!</p>
                 </a>
             </div>
         </div>
@@ -63,118 +69,31 @@
             <h2>예시 문제</h2>
             <div class="problem-section">
                 <div class="problem-number">예시</div>
-                <div class="instruction">안에 알맞은 수를 써넣으세요.</div>
+                <div class="instruction">빈칸에 알맞은 수를 써넣으세요.</div>
 
         <div class="math-problem">
           <div class="equation-row">
-            <span class="number">375</span>
-            <span class="operator">×</span>
-            <span class="number">5</span>
-            <span class="equals">=</span>
+            <span class="number">9996</span>
+            <span class="operator">-</span>
+            <span class="number">9997</span>
+            <span class="operator">-</span>
             <input
               type="text"
               class="answer-input"
               id="answer1"
               maxlength="4"
+              placeholder="____"
             />
-          </div>
-
-          <div class="arrow">↓</div>
-
-          <div class="equation-row">
-            <span class="number">375</span>
-            <span class="operator">×</span>
-            <span class="number">50</span>
-            <span class="equals">=</span>
+            <span class="operator">-</span>
             <input
               type="text"
               class="answer-input"
               id="answer2"
-              maxlength="5"
+              maxlength="4"
+              placeholder="____"
             />
-          </div>
-        </div>
-
-        <div class="vertical-multiplication">
-          <div class="multiplication-problem">
-            <div class="multiplicand">
-              <span>4</span>
-              <span>6</span>
-              <span>1</span>
-            </div>
-            <div class="multiplier">
-              <span>×</span>
-              <span class="multiplier-digit">3</span>
-            </div>
-            <div class="line"></div>
-            <div class="result">
-              <input
-                type="text"
-                class="digit-input"
-                id="digit1"
-                maxlength="1"
-              />
-              <input
-                type="text"
-                class="digit-input"
-                id="digit2"
-                maxlength="1"
-              />
-              <input
-                type="text"
-                class="digit-input"
-                id="digit3"
-                maxlength="1"
-              />
-            </div>
-          </div>
-
-          <div class="arrow-right">→</div>
-
-          <div class="multiplication-problem">
-            <div class="multiplicand">
-              <span>4</span>
-              <span>6</span>
-              <span>1</span>
-            </div>
-            <div class="multiplier">
-              <span>×</span>
-              <span class="multiplier-digit">3</span>
-              <span class="multiplier-digit">0</span>
-            </div>
-            <div class="line"></div>
-            <div class="result">
-              <input
-                type="text"
-                class="digit-input"
-                id="digit4"
-                maxlength="1"
-              />
-              <input
-                type="text"
-                class="digit-input"
-                id="digit5"
-                maxlength="1"
-              />
-              <input
-                type="text"
-                class="digit-input"
-                id="digit6"
-                maxlength="1"
-              />
-              <input
-                type="text"
-                class="digit-input"
-                id="digit7"
-                maxlength="1"
-              />
-              <input
-                type="text"
-                class="digit-input"
-                id="digit8"
-                maxlength="1"
-              />
-            </div>
+            <span class="operator">-</span>
+            <span class="number">10000</span>
           </div>
         </div>
 
@@ -187,6 +106,27 @@
       </div>
     </div>
 
-    <script src="script.js"></script>
+    <script>
+      // 간단한 예시 문제 스크립트
+      document.getElementById('checkAnswer').addEventListener('click', function() {
+        const answer1 = document.getElementById('answer1').value;
+        const answer2 = document.getElementById('answer2').value;
+        const result = document.getElementById('result');
+        
+        if (answer1 === '9998' && answer2 === '9999') {
+          result.textContent = '정답입니다! 🎉';
+          result.className = 'result-message correct';
+        } else {
+          result.textContent = '다시 생각해보세요. 힌트: 1씩 증가하는 수열입니다.';
+          result.className = 'result-message incorrect';
+        }
+      });
+      
+      document.getElementById('resetAnswer').addEventListener('click', function() {
+        document.getElementById('answer1').value = '';
+        document.getElementById('answer2').value = '';
+        document.getElementById('result').textContent = '';
+      });
+    </script>
   </body>
 </html>
