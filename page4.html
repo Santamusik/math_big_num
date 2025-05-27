@@ -3,25 +3,25 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>?�을 ?�아보기 - ?????�습</title>
+    <title>억을 알아보기 - 수학학습</title>
     <link rel="stylesheet" href="style.css" />
   </head>
   <body>
     <div class="container">
-      <!-- ?�비게이??-->
+      <!-- 내비게이션 -->
       <div class="navigation">
-        <a href="page3.html" class="nav-button">⬅️ ?�전</a>
+        <a href="page3.html" class="nav-button">⬅️ 이전</a>
         <div class="page-info">
-          <div>?�을 ?�아보기</div>
+          <div>억을 알아보기</div>
           <div class="progress-bar">
             <div class="progress-fill" style="width: 57.1%"></div>
           </div>
           <small>4 / 7</small>
         </div>
-        <a href="page5.html" class="nav-button">?�음 ?�️</a>
+        <a href="page5.html" class="nav-button">다음 ➡️</a>
       </div>
 
-      <h1>4차시 | ?�을 ?�아보기</h1>
+      <h1>4차시 | 억을 알아보기</h1>
 
       <div class="lesson-description">
         <div class="big-number-display">
@@ -31,52 +31,44 @@
           <span class="number orange">0000</span>
         </div>
         <div class="unit-labels">
-          <span class="label">??/span>
-          <span class="label">�?/span>
-          <span class="label">??/span>
+          <span class="label">억</span>
+          <span class="label">만</span>
+          <span class="label">일</span>
         </div>
         <div class="speech-bubble">
-          <p>1?��? 1000만이 10개인 ?�에??</p>
+          <p>1억은 1000만이 10개인 수에요!</p>
         </div>
       </div>
 
       <div class="problem-section">
         <div class="problem-header">
-          <span class="problem-number">문제</span> 빈칸???�맞?� ?��?
-          ?�넣?�세??
+          <span class="problem-number">문제</span> 빈칸에 알맞은 수를 써세요.
         </div>
 
         <div class="eok-problems">
           <div class="eok-row">
-            <span class="text">1000만이 10개인 ?�는</span>
-            <input
-              type="text"
-              class="eok-input"
-              id="eok1"
-              maxlength="10"
-             
-            />
-            <span class="text">?�라 ?�니??</span>
+            <span class="text">1000만이 10개인 수는</span>
+            <input type="text" class="eok-input" id="eok1" maxlength="10" />
+            <span class="text">이라 합니다.</span>
           </div>
 
           <div class="place-value-row">
             <span class="text"
-              >1?�이 8670�? 1만이 1593�? 1??4260개인 ?�는</span
+              >1억이 8670개, 1만이 1593개, 1이 4260개인 수는</span
             >
             <input
               type="text"
               class="eok-input large"
               id="place1"
               maxlength="20"
-             
             />
-            <span class="text">?�니??</span>
+            <span class="text">입니다.</span>
           </div>
         </div>
 
         <div class="button-container">
-          <button id="checkAnswer" class="check-button">?�답 ?�인</button>
-          <button id="resetAnswer" class="reset-button">?�시 ?��?/button>
+          <button id="checkAnswer" class="check-button">정답 확인</button>
+          <button id="resetAnswer" class="reset-button">다시 풀기</button>
         </div>
 
         <div id="result" class="result-message"></div>
@@ -85,9 +77,9 @@
 
     <script src="config.js"></script>
     <script>
-      // ?�이지 4 ?�용 ?�크립트
+      // 페이지 4 전용 스크립트
       const answers = {
-        eok1: "1??,
+        eok1: "1억",
         place1: "867015934260",
       };
 
@@ -115,10 +107,10 @@
 
           const result = document.getElementById("result");
           if (allCorrect) {
-            result.textContent = `?�벽?�니?? ?�� 모든 문제�?맞혔?�요!`;
+            result.textContent = `완벽합니다! 모든 문제를 맞혔어요!`;
             result.className = "result-message correct";
           } else {
-            result.textContent = `${correctCount}/${totalQuestions} ?�답?�니?? ?�시 ?�번 ?�각?�보?�요!`;
+            result.textContent = `${correctCount}/${totalQuestions} 정답입니다! 다시 한번 생각해보세요!`;
             result.className = "result-message partial";
           }
         });
