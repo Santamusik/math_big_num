@@ -128,6 +128,18 @@ h2 {
   box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
 }
 
+.problem-header {
+  font-size: 1.3em;
+  color: #2c3e50;
+  margin-bottom: 30px;
+  font-weight: 600;
+}
+
+.problem-header .problem-number {
+  margin-bottom: 0;
+  margin-right: 10px;
+}
+
 .instruction {
   font-size: 1.3em;
   color: #2c3e50;
@@ -451,8 +463,8 @@ h2 {
   border: 3px solid #3498db;
   border-radius: 8px;
   text-align: center;
-  min-width: 70px;
-  width: 70px;
+  min-width: 85px;
+  width: 85px;
   background-color: #ecf0f1;
   font-weight: bold;
 }

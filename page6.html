@@ -3,25 +3,25 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>뛰어세기 - 큰 수 학습</title>
+    <title>?�어?�기 - ?????�습</title>
     <link rel="stylesheet" href="style.css" />
   </head>
   <body>
     <div class="container">
-      <!-- 네비게이션 -->
+      <!-- ?�비게이??-->
       <div class="navigation">
-        <a href="page5.html" class="nav-button">⬅️ 이전</a>
+        <a href="page5.html" class="nav-button">⬅️ ?�전</a>
         <div class="page-info">
-          <div>뛰어세기</div>
+          <div>?�어?�기</div>
           <div class="progress-bar">
             <div class="progress-fill" style="width: 85.7%"></div>
           </div>
           <small>6 / 7</small>
         </div>
-        <a href="page7.html" class="nav-button">다음 ➡️</a>
+        <a href="page7.html" class="nav-button">?�음 ?�️</a>
       </div>
 
-      <h1>6차시 | 뛰어세기</h1>
+      <h1>6차시 | ?�어?�기</h1>
 
       <div class="lesson-description">
         <div class="skip-counting-example">
@@ -33,41 +33,41 @@
           <span class="dash">-</span>
           <span class="number orange">55000</span>
         </div>
-        <p class="skip-note">만씩 뛰어세기: 만의 자리 숫자가 1씩 커져.</p>
+        <p class="skip-note">만씩 ?�어?�기: 만의 ?�리 ?�자가 1??커져.</p>
       </div>
 
       <div class="problem-section">
         <div class="problem-number">문제</div>
-        <div class="instruction">빈칸에 알맞은 수를 써넣으세요.</div>
+        <div class="instruction">빈칸???�맞?� ?��? ?�넣?�세??</div>
 
         <div class="skip-problems">
           <div class="skip-row">
-            <span class="text">10억씩 뛰어 세기: 910억 - 920억 -</span>
+            <span class="text">10?�씩 ?�어 ?�기: 910??- 920??-</span>
             <input
               type="text"
               class="skip-input"
               id="skip1"
               maxlength="10"
-              placeholder="____"
+             
             />
-            <span class="text">- 940억 -</span>
+            <span class="text">- 940??-</span>
             <input
               type="text"
               class="skip-input"
               id="skip2"
               maxlength="10"
-              placeholder="____"
+             
             />
           </div>
 
           <div class="skip-row">
-            <span class="text">10만씩 뛰어 세기: 1500000 - 2500000 -</span>
+            <span class="text">10만씩 ?�어 ?�기: 1500000 - 2500000 -</span>
             <input
               type="text"
               class="skip-input"
               id="skip3"
               maxlength="10"
-              placeholder="____"
+             
             />
             <span class="text">-</span>
             <input
@@ -75,14 +75,14 @@
               class="skip-input"
               id="skip4"
               maxlength="10"
-              placeholder="____"
+             
             />
           </div>
         </div>
 
         <div class="button-container">
-          <button id="checkAnswer" class="check-button">정답 확인</button>
-          <button id="resetAnswer" class="reset-button">다시 풀기</button>
+          <button id="checkAnswer" class="check-button">?�답 ?�인</button>
+          <button id="resetAnswer" class="reset-button">?�시 ?��?/button>
         </div>
 
         <div id="result" class="result-message"></div>
@@ -91,10 +91,10 @@
 
     <script src="config.js"></script>
     <script>
-      // 페이지 6 전용 스크립트
+      // ?�이지 6 ?�용 ?�크립트
       const answers = {
-        skip1: "930억",
-        skip2: "950억",
+        skip1: "930??,
+        skip2: "950??,
         skip3: "3500000",
         skip4: "4500000",
       };
@@ -123,10 +123,10 @@
 
           const result = document.getElementById("result");
           if (allCorrect) {
-            result.textContent = `완벽합니다! 🎉 모든 문제를 맞혔어요!`;
+            result.textContent = `?�벽?�니?? ?�� 모든 문제�?맞혔?�요!`;
             result.className = "result-message correct";
           } else {
-            result.textContent = `${correctCount}/${totalQuestions} 정답입니다. 다시 한번 생각해보세요!`;
+            result.textContent = `${correctCount}/${totalQuestions} ?�답?�니?? ?�시 ?�번 ?�각?�보?�요!`;
             result.className = "result-message partial";
           }
         });
