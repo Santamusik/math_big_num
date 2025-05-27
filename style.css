@@ -415,6 +415,11 @@ h2 {
   text-align: center;
 }
 
+.blue-text {
+  color: #3498db;
+  font-weight: bold;
+}
+
 .lesson-description h2 {
   color: white;
   margin-bottom: 15px;
@@ -446,7 +451,8 @@ h2 {
   border: 3px solid #3498db;
   border-radius: 8px;
   text-align: center;
-  min-width: 100px;
+  min-width: 70px;
+  width: 70px;
   background-color: #ecf0f1;
   font-weight: bold;
 }
