@@ -496,13 +496,13 @@ h2 {
 }
 
 .korean-input {
-  padding: 10px 15px;
-  font-size: 1em;
+  padding: 15px 22px;
+  font-size: 1.5em;
   border: 3px solid #9b59b6;
   border-radius: 8px;
   text-align: center;
-  min-width: 200px;
-  width: 200px;
+  min-width: 300px;
+  width: 300px;
   background-color: #f8f9fa;
   font-weight: bold;
 }
@@ -736,6 +736,14 @@ h2 {
   gap: 20px;
   font-size: 1.8em;
   font-weight: bold;
+  flex-wrap: wrap;
+}
+
+.comparison-rule {
+  font-size: 0.7em;
+  color: #2c3e50;
+  margin-right: 10px;
+  font-weight: 600;
 }
 
 .symbol {

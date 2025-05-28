@@ -56,8 +56,7 @@
 
           <div class="complex-place-value">
             <span class="text"
-              >1조가 3745개, 1억이 8670개, 1만이 15937개, 1이 4260개인
-              수는</span
+              >1조가 3745개, 1억이 8670개, 1만이 1593개, 1이 4260개인 수는</span
             >
             <input
               type="text"
@@ -82,8 +81,8 @@
     <script>
       // 페이지 5 전용 스크립트
       const answers = {
-        jo1: "1조",
-        complex1: "374586701593742600",
+        jo1: "1000000000000",
+        complex1: "37458670159342600",
       };
 
       document
@@ -110,8 +109,10 @@
 
           const result = document.getElementById("result");
           if (allCorrect) {
-            result.textContent = `완벽합니다! 모든 문제를 맞혔어요!`;
+            result.textContent = `완벽합니다! 🎉 모든 문제를 맞혔어요! 다음 단계로 진행할 수 있습니다!`;
             result.className = "result-message correct";
+            // 페이지 완료 표시
+            pageConfig.markPageCompleted(5);
           } else {
             result.textContent = `${correctCount}/${totalQuestions} 정답입니다! 다시 한번 생각해보세요!`;
             result.className = "result-message partial";

@@ -152,6 +152,31 @@ const pageConfig = {
     },
   ],
 
+  // 페이지 완료 상태 관리
+  getCompletedPages: function () {
+    const completed = localStorage.getItem("completedPages");
+    return completed ? JSON.parse(completed) : [];
+  },
+
+  markPageCompleted: function (pageId) {
+    const completed = this.getCompletedPages();
+    if (!completed.includes(pageId)) {
+      completed.push(pageId);
+      localStorage.setItem("completedPages", JSON.stringify(completed));
+    }
+  },
+
+  isPageAccessible: function (pageId) {
+    if (pageId === 1) return true; // 첫 페이지는 항상 접근 가능
+    const completed = this.getCompletedPages();
+    return completed.includes(pageId - 1); // 이전 페이지가 완료되어야 접근 가능
+  },
+
+  isCertificateAccessible: function () {
+    const completed = this.getCompletedPages();
+    return completed.length >= 7; // 모든 7단계가 완료되어야 증명서 접근 가능
+  },
+
   // 현재 페이지 정보 가져오기
   getCurrentPage: function () {
     const currentFile =
@@ -173,5 +198,18 @@ const pageConfig = {
           : null,
       current: this.pages[currentIndex],
     };
+  },
+
+  // 페이지 접근 권한 확인
+  checkPageAccess: function () {
+    const currentPage = this.getCurrentPage();
+    if (!currentPage) return true; // 홈페이지는 항상 접근 가능
+
+    if (!this.isPageAccessible(currentPage.id)) {
+      alert(`${currentPage.id - 1}단계를 먼저 완료해주세요!`);
+      window.location.href = `page${currentPage.id - 1}.html`;
+      return false;
+    }
+    return true;
   },
 };

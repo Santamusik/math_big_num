@@ -77,8 +77,8 @@
     <script>
       // 페이지 2 전용 스크립트
       const answers = {
-        korean2: "삼만구천오백이십삼",
-        korean3: "오만 육천팔백칠십일",
+        korean2: "39523",
+        korean3: "오만육천팔백칠십일",
       };
 
       document
@@ -105,8 +105,10 @@
 
           const result = document.getElementById("result");
           if (allCorrect) {
-            result.textContent = `완벽합니다! 🎉 모든 문제를 맞혔어요!`;
+            result.textContent = `완벽합니다! 🎉 모든 문제를 맞혔어요! 다음 단계로 진행할 수 있습니다!`;
             result.className = "result-message correct";
+            // 페이지 완료 표시
+            pageConfig.markPageCompleted(2);
           } else {
             result.textContent = `${correctCount}/${totalQuestions} 정답입니다. 다시 한번 생각해보세요!`;
             result.className = "result-message partial";

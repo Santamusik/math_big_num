@@ -26,12 +26,16 @@
       <div class="lesson-description">
         <div class="comparison-examples">
           <div class="comparison-item">
-            <span class="number">214590</span>
+            <span class="comparison-rule">자리 수가 많은 쪽이 더 큰 수:</span>
+            <span class="number"><span style="color: blue">2</span>14590</span>
             <span class="symbol">></span>
             <span class="number">35710</span>
           </div>
           <div class="comparison-item">
-            <span class="number">2790340</span>
+            <span class="comparison-rule"
+              >높은 자리 수가 큰 쪽이 더 큰 수:</span
+            >
+            <span class="number">27<span style="color: blue">9</span>0340</span>
             <span class="symbol">></span>
             <span class="number">2770340</span>
           </div>
@@ -109,6 +113,8 @@
           if (allCorrect) {
             result.textContent = `완벽합니다! 🎉 모든 문제를 맞혔어요! 이제 증명서를 받으러 가세요!`;
             result.className = "result-message correct";
+            // 페이지 완료 표시
+            pageConfig.markPageCompleted(7);
           } else {
             result.textContent = `${correctCount}/${totalQuestions} 정답입니다. 다시 한번 생각해보세요!`;
             result.className = "result-message partial";

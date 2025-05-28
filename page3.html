@@ -43,12 +43,6 @@
         </div>
 
         <div class="unit-problems">
-          <div class="unit-row">
-            <span class="text">10000이 86297개인 수는</span>
-            <input type="text" class="unit-input" id="calc1" maxlength="15" />
-            <span class="text">이라 씁니다.</span>
-          </div>
-
           <div class="unit-conversion-grid">
             <div class="conversion-item">
               <span class="text">1만이 10개</span>
@@ -68,6 +62,12 @@
               <input type="text" class="unit-input" id="conv3" maxlength="10" />
             </div>
           </div>
+
+          <div class="unit-row">
+            <span class="text">10000이 86297개인 수는</span>
+            <input type="text" class="unit-input" id="calc1" maxlength="15" />
+            <span class="text">이라 씁니다.</span>
+          </div>
         </div>
 
         <div class="button-container">
@@ -84,9 +84,9 @@
       // 페이지 3 전용 스크립트
       const answers = {
         calc1: "862970000",
-        conv1: "10만",
-        conv2: "100만",
-        conv3: "1000만",
+        conv1: "100000",
+        conv2: "1000000",
+        conv3: "10000000",
       };
 
       document
@@ -113,8 +113,10 @@
 
           const result = document.getElementById("result");
           if (allCorrect) {
-            result.textContent = `완벽합니다! 🎉 모든 문제를 맞혔어요!`;
+            result.textContent = `완벽합니다! 🎉 모든 문제를 맞혔어요! 다음 단계로 진행할 수 있습니다!`;
             result.className = "result-message correct";
+            // 페이지 완료 표시
+            pageConfig.markPageCompleted(3);
           } else {
             result.textContent = `${correctCount}/${totalQuestions} 정답입니다. 다시 한번 생각해보세요!`;
             result.className = "result-message partial";

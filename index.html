@@ -128,5 +128,52 @@
         document.getElementById('result').textContent = '';
       });
     </script>
+    <script src="config.js"></script>
+    <script>
+      // 페이지 접근 제한 적용
+      document.addEventListener('DOMContentLoaded', function() {
+        const completed = pageConfig.getCompletedPages();
+        const pageCards = document.querySelectorAll('.page-card');
+        
+        pageCards.forEach((card, index) => {
+          const pageId = index + 1;
+          const href = card.getAttribute('href');
+          
+          if (href === 'certificate.html') {
+            // 증명서는 모든 7단계 완료 후 접근 가능
+            if (!pageConfig.isCertificateAccessible()) {
+              card.style.opacity = '0.5';
+              card.style.pointerEvents = 'none';
+              card.addEventListener('click', function(e) {
+                e.preventDefault();
+                alert('모든 7단계를 완료해야 증명서를 받을 수 있습니다!');
+              });
+            }
+          } else if (pageId > 1) {
+            // 2단계부터는 이전 단계 완료 후 접근 가능
+            if (!pageConfig.isPageAccessible(pageId)) {
+              card.style.opacity = '0.5';
+              card.style.pointerEvents = 'none';
+              card.addEventListener('click', function(e) {
+                e.preventDefault();
+                alert(`${pageId - 1}단계를 먼저 완료해주세요!`);
+              });
+            }
+          }
+          
+          // 완료된 페이지에 체크 표시
+          if (completed.includes(pageId)) {
+            const checkMark = document.createElement('div');
+            checkMark.innerHTML = '✅';
+            checkMark.style.position = 'absolute';
+            checkMark.style.top = '10px';
+            checkMark.style.right = '10px';
+            checkMark.style.fontSize = '1.5em';
+            card.style.position = 'relative';
+            card.appendChild(checkMark);
+          }
+        });
+      });
+    </script>
   </body>
 </html>
