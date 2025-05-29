@@ -620,6 +620,24 @@ h2 {
   margin: 0 5px;
 }
 
+.number-with-labels {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.number-group {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.number-group .label {
+  font-size: 0.6em;
+  font-weight: bold;
+}
+
 .unit-labels {
   display: flex;
   align-items: center;
