@@ -618,6 +618,8 @@ h2 {
   color: #2c3e50;
   font-weight: bold;
   margin: 0 5px;
+  align-self: flex-start;
+  line-height: 1;
 }
 
 .number-with-labels {
