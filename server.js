@@ -116,6 +116,39 @@ app.post("/api/student/register", (req, res) => {
   }
 });
 
+// 이름으로 학생 검색
+app.post("/api/student/search", (req, res) => {
+  try {
+    const { studentName } = req.body;
+
+    if (!studentName) {
+      return res.status(400).json({
+        success: false,
+        error: "학생 이름을 입력해주세요.",
+      });
+    }
+
+    // 이름으로 학생 검색 (부분 일치)
+    const matchingStudents = [];
+    for (const [id, student] of studentsData) {
+      if (student.studentName && student.studentName.includes(studentName)) {
+        matchingStudents.push(student);
+      }
+    }
+
+    res.json({
+      success: true,
+      students: matchingStudents,
+    });
+  } catch (error) {
+    console.error("학생 검색 오류:", error);
+    res.status(500).json({
+      success: false,
+      error: "학생 검색 중 오류가 발생했습니다.",
+    });
+  }
+});
+
 // 기존 학생 정보 가져오기 (호환성용)
 app.post("/api/student", (req, res) => {
   try {
