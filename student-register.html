@@ -194,7 +194,10 @@
         </form>
 
         <div class="existing-student">
-          <p>이미 등록된 학생이신가요?</p>
+          <p><strong>이미 등록된 학생이신가요?</strong></p>
+          <p style="font-size: 12px; color: #666; margin: 5px 0">
+            학급 코드 + 이름으로 로그인
+          </p>
           <button type="button" id="existingStudentBtn">
             기존 계정으로 로그인
           </button>
@@ -204,7 +207,10 @@
             <p>또는</p>
           </div>
 
-          <p>선생님이 알려준 학급 코드가 있나요?</p>
+          <p><strong>처음 등록하시나요?</strong></p>
+          <p style="font-size: 12px; color: #666; margin: 5px 0">
+            선생님이 알려준 학급 코드로 간편 등록
+          </p>
           <button type="button" id="classCodeBtn" style="background: #ff9800">
             학급 코드로 등록
           </button>
@@ -269,17 +275,25 @@
       document
         .getElementById("existingStudentBtn")
         .addEventListener("click", async function () {
-          const studentName = prompt("등록된 학생 이름을 입력하세요:");
+          // 1단계: 학급 코드 입력
+          const classCode = prompt("선생님이 알려준 학급 코드를 입력하세요:");
+          if (!classCode) return;
+
+          // 2단계: 학생 이름 입력
+          const studentName = prompt("학생 이름을 입력하세요:");
           if (!studentName) return;
 
           try {
-            // 이름으로 학생 검색
-            const response = await fetch("/api/student/search", {
+            // 학급 코드 + 이름으로 학생 검색
+            const response = await fetch("/api/student/search-by-class", {
               method: "POST",
               headers: {
                 "Content-Type": "application/json",
               },
-              body: JSON.stringify({ studentName: studentName }),
+              body: JSON.stringify({
+                classCode: classCode,
+                studentName: studentName,
+              }),
             });
 
             const data = await response.json();
@@ -295,12 +309,10 @@
                 );
                 window.location.href = "index.html";
               } else {
-                // 여러 명이면 선택하게 함
-                let message = `"${studentName}" 이름으로 등록된 학생이 ${data.students.length}명 있습니다:\n\n`;
+                // 같은 학급 내 동명이인이 있을 경우
+                let message = `${data.classInfo.schoolName} ${data.classInfo.grade}학년 ${data.classInfo.classNumber}반에서 "${studentName}" 이름의 학생이 ${data.students.length}명 있습니다:\n\n`;
                 data.students.forEach((student, index) => {
                   message += `${index + 1}. ${student.studentName} (${
-                    student.schoolName
-                  } ${student.grade}학년 ${student.classNumber}반 ${
                     student.studentNumber
                   }번)\n`;
                 });
@@ -316,13 +328,19 @@
                     "studentInfo",
                     JSON.stringify(selectedStudent)
                   );
-                  alert(`${selectedStudent.studentName}님으로 로그인합니다.`);
+                  alert(
+                    `${selectedStudent.studentName}님 (${selectedStudent.studentNumber}번)으로 로그인합니다.`
+                  );
                   window.location.href = "index.html";
                 }
               }
+            } else if (data.error === "유효하지 않은 학급 코드입니다.") {
+              alert(
+                "학급 코드가 올바르지 않습니다.\n선생님께 정확한 코드를 확인해주세요."
+              );
             } else {
               alert(
-                `"${studentName}" 이름으로 등록된 학생을 찾을 수 없습니다.\n새로 등록해주세요.`
+                `해당 학급에서 "${studentName}" 이름의 학생을 찾을 수 없습니다.\n이름을 정확히 입력했는지 확인해주세요.`
               );
             }
           } catch (error) {

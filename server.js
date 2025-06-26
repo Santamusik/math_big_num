@@ -193,7 +193,57 @@ app.post("/api/student/register-with-code", (req, res) => {
   }
 });
 
-// 이름으로 학생 검색
+// 학급 코드 + 이름으로 학생 검색 (개선된 방식)
+app.post("/api/student/search-by-class", (req, res) => {
+  try {
+    const { classCode, studentName } = req.body;
+
+    if (!classCode || !studentName) {
+      return res.status(400).json({
+        success: false,
+        error: "학급 코드와 학생 이름을 모두 입력해주세요.",
+      });
+    }
+
+    // 유효한 학급 코드인지 확인
+    if (!classCodes.has(classCode)) {
+      return res.status(404).json({
+        success: false,
+        error: "유효하지 않은 학급 코드입니다.",
+      });
+    }
+
+    const classInfo = classCodes.get(classCode);
+
+    // 해당 학급 내에서만 이름으로 학생 검색
+    const matchingStudents = [];
+    for (const [id, student] of studentsData) {
+      if (
+        student.schoolName === classInfo.schoolName &&
+        student.grade === classInfo.grade &&
+        student.classNumber === classInfo.classNumber &&
+        student.studentName &&
+        student.studentName.includes(studentName)
+      ) {
+        matchingStudents.push(student);
+      }
+    }
+
+    res.json({
+      success: true,
+      students: matchingStudents,
+      classInfo: classInfo, // 학급 정보도 함께 반환
+    });
+  } catch (error) {
+    console.error("학급별 학생 검색 오류:", error);
+    res.status(500).json({
+      success: false,
+      error: "학생 검색 중 오류가 발생했습니다.",
+    });
+  }
+});
+
+// 이름으로 학생 검색 (기존 방식 - 호환성용)
 app.post("/api/student/search", (req, res) => {
   try {
     const { studentName } = req.body;
