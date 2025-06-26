@@ -32,4 +32,5 @@ pids
 .eslintcache
 
 node_modules/
-.env 
+.env
+key.env

@@ -176,7 +176,7 @@
           // AI 피드백 섹션 표시
           document.getElementById("aiFeedbackSection").style.display = "block";
 
-          const response = await fetch("http://localhost:3000/chat", {
+          const response = await fetch("/chat", {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
