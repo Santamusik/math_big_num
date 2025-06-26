@@ -19,6 +19,132 @@ app.use(express.json());
 // 정적 파일 서빙 (HTML, CSS, JS 파일들)
 app.use(express.static("."));
 
+// 학습 데이터 저장소 (메모리 기반 - 나중에 DB로 업그레이드 가능)
+const studentsData = new Map();
+
+// 학생 ID 생성 함수
+function generateStudentId() {
+  return (
+    "student_" + Date.now() + "_" + Math.random().toString(36).substr(2, 9)
+  );
+}
+
+// 학생 등록 또는 기존 학생 정보 가져오기
+app.post("/api/student", (req, res) => {
+  try {
+    const { studentId, studentName } = req.body;
+
+    if (studentId && studentsData.has(studentId)) {
+      // 기존 학생 정보 반환
+      res.json({
+        success: true,
+        student: studentsData.get(studentId),
+      });
+    } else {
+      // 새 학생 생성
+      const newStudentId = generateStudentId();
+      const studentData = {
+        id: newStudentId,
+        name: studentName || "익명 학생",
+        createdAt: new Date().toISOString(),
+        completedPages: [],
+        scores: {},
+        totalStudyTime: 0,
+        lastAccess: new Date().toISOString(),
+      };
+
+      studentsData.set(newStudentId, studentData);
+
+      res.json({
+        success: true,
+        student: studentData,
+      });
+    }
+  } catch (error) {
+    console.error("학생 등록 오류:", error);
+    res.status(500).json({
+      success: false,
+      error: "학생 등록 중 오류가 발생했습니다.",
+    });
+  }
+});
+
+// 학습 진도 저장
+app.post("/api/progress", (req, res) => {
+  try {
+    const { studentId, pageId, scores, studyTime } = req.body;
+
+    if (!studentsData.has(studentId)) {
+      return res.status(404).json({
+        success: false,
+        error: "학생을 찾을 수 없습니다.",
+      });
+    }
+
+    const student = studentsData.get(studentId);
+
+    // 페이지 완료 표시
+    if (!student.completedPages.includes(pageId)) {
+      student.completedPages.push(pageId);
+    }
+
+    // 점수 저장
+    if (scores) {
+      student.scores[`page${pageId}`] = scores;
+    }
+
+    // 학습 시간 누적
+    if (studyTime) {
+      student.totalStudyTime += studyTime;
+    }
+
+    // 마지막 접속 시간 업데이트
+    student.lastAccess = new Date().toISOString();
+
+    studentsData.set(studentId, student);
+
+    res.json({
+      success: true,
+      student: student,
+    });
+  } catch (error) {
+    console.error("진도 저장 오류:", error);
+    res.status(500).json({
+      success: false,
+      error: "진도 저장 중 오류가 발생했습니다.",
+    });
+  }
+});
+
+// 학습 데이터 조회
+app.get("/api/progress/:studentId", (req, res) => {
+  try {
+    const { studentId } = req.params;
+
+    if (!studentsData.has(studentId)) {
+      return res.status(404).json({
+        success: false,
+        error: "학생을 찾을 수 없습니다.",
+      });
+    }
+
+    const student = studentsData.get(studentId);
+    student.lastAccess = new Date().toISOString();
+    studentsData.set(studentId, student);
+
+    res.json({
+      success: true,
+      student: student,
+    });
+  } catch (error) {
+    console.error("데이터 조회 오류:", error);
+    res.status(500).json({
+      success: false,
+      error: "데이터 조회 중 오류가 발생했습니다.",
+    });
+  }
+});
+
 // OpenAI 설정
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,

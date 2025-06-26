@@ -131,7 +131,9 @@
     <script src="config.js"></script>
     <script>
       // 페이지 접근 제한 적용
-      document.addEventListener('DOMContentLoaded', function() {
+      document.addEventListener('DOMContentLoaded', async function() {
+        // 학생 초기화
+        await pageConfig.initStudent();
         const completed = pageConfig.getCompletedPages();
         const pageCards = document.querySelectorAll('.page-card');
         

@@ -152,17 +152,102 @@ const pageConfig = {
     },
   ],
 
+  // 현재 학생 정보
+  currentStudent: null,
+
+  // 학생 초기화 (페이지 로드시 호출)
+  initStudent: async function () {
+    try {
+      // localStorage에서 학생 ID 확인
+      let studentId = localStorage.getItem("studentId");
+
+      const response = await fetch("/api/student", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          studentId: studentId,
+          studentName: localStorage.getItem("studentName") || null,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        this.currentStudent = data.student;
+        localStorage.setItem("studentId", data.student.id);
+
+        // 이름이 없으면 입력 받기
+        if (!data.student.name || data.student.name === "익명 학생") {
+          const name = prompt("학습자 이름을 입력해주세요:");
+          if (name) {
+            localStorage.setItem("studentName", name);
+            this.currentStudent.name = name;
+          }
+        }
+
+        console.log(
+          "학생 로그인:",
+          this.currentStudent.name,
+          this.currentStudent.id
+        );
+        return true;
+      }
+    } catch (error) {
+      console.error("학생 초기화 오류:", error);
+      // 오류시 localStorage 방식으로 fallback
+      return false;
+    }
+  },
+
   // 페이지 완료 상태 관리
   getCompletedPages: function () {
+    if (this.currentStudent) {
+      return this.currentStudent.completedPages || [];
+    }
+    // fallback to localStorage
     const completed = localStorage.getItem("completedPages");
     return completed ? JSON.parse(completed) : [];
   },
 
-  markPageCompleted: function (pageId) {
-    const completed = this.getCompletedPages();
-    if (!completed.includes(pageId)) {
-      completed.push(pageId);
-      localStorage.setItem("completedPages", JSON.stringify(completed));
+  markPageCompleted: async function (pageId) {
+    try {
+      if (this.currentStudent) {
+        // 서버에 진도 저장
+        const response = await fetch("/api/progress", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            studentId: this.currentStudent.id,
+            pageId: pageId,
+            studyTime: 5, // 기본 5분으로 설정 (나중에 실제 시간 측정 추가)
+          }),
+        });
+
+        const data = await response.json();
+        if (data.success) {
+          this.currentStudent = data.student;
+          console.log(`페이지 ${pageId} 완료 저장됨`);
+        }
+      } else {
+        // fallback to localStorage
+        const completed = this.getCompletedPages();
+        if (!completed.includes(pageId)) {
+          completed.push(pageId);
+          localStorage.setItem("completedPages", JSON.stringify(completed));
+        }
+      }
+    } catch (error) {
+      console.error("진도 저장 오류:", error);
+      // 오류시 localStorage에 저장
+      const completed = this.getCompletedPages();
+      if (!completed.includes(pageId)) {
+        completed.push(pageId);
+        localStorage.setItem("completedPages", JSON.stringify(completed));
+      }
     }
   },
 
