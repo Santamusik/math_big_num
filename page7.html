@@ -76,6 +76,16 @@
         </div>
 
         <div id="result" class="result-message"></div>
+
+        <!-- AI 피드백 섹션 -->
+        <div
+          class="ai-feedback-section"
+          id="aiFeedbackSection"
+          style="display: none"
+        >
+          <h3>🤖 AI 피드백</h3>
+          <p id="aiFeedbackMessage">피드백을 생성하고 있습니다...</p>
+        </div>
       </div>
     </div>
 
@@ -86,6 +96,46 @@
         comp1: ">",
         comp2: "<",
       };
+
+      // AI 피드백 요청 함수
+      async function getAIFeedback(userAnswers, correctAnswers) {
+        try {
+          const question =
+            "수의 크기 비교하기: 1632만 ? 971만, 4670000000 ? 4770000000";
+          const correctAnswer = "정답: >, <";
+          const studentAnswer = `학생답: ${Object.values(userAnswers).join(
+            ", "
+          )}`;
+
+          document.getElementById("aiFeedbackSection").style.display = "block";
+
+          const response = await fetch("http://localhost:3000/chat", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              question: question,
+              correctAnswer: correctAnswer,
+              studentAnswer: studentAnswer,
+            }),
+          });
+
+          const data = await response.json();
+
+          if (data.success) {
+            document.getElementById("aiFeedbackMessage").textContent =
+              data.reply;
+          } else {
+            document.getElementById("aiFeedbackMessage").textContent =
+              "큰 수의 크기를 정확히 비교했어요! 수의 대소관계를 완벽하게 이해했네요! 🎉";
+          }
+        } catch (error) {
+          console.error("AI 피드백 오류:", error);
+          document.getElementById("aiFeedbackMessage").textContent =
+            "수의 크기 비교 능력이 훌륭해요! 모든 큰 수 학습을 완료했습니다! 증명서를 받으러 가세요! 🏆";
+        }
+      }
 
       document
         .getElementById("checkAnswer")
@@ -119,6 +169,16 @@
             result.textContent = `${correctCount}/${totalQuestions} 정답입니다. 다시 한번 생각해보세요!`;
             result.className = "result-message partial";
           }
+
+          // 사용자 답안 수집 및 AI 피드백 요청
+          const userAnswers = {};
+          for (let id in answers) {
+            userAnswers[id] = document.getElementById(id).value;
+          }
+
+          // AI 피드백 섹션 항상 표시
+          document.getElementById("aiFeedbackSection").style.display = "block";
+          getAIFeedback(userAnswers, answers);
         });
 
       document

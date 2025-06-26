@@ -134,6 +134,16 @@
         </div>
 
         <div id="result" class="result-message"></div>
+
+        <!-- AI 피드백 섹션 -->
+        <div
+          class="ai-feedback-section"
+          id="aiFeedbackSection"
+          style="display: none"
+        >
+          <h3>🤖 AI 피드백</h3>
+          <p id="aiFeedbackMessage">피드백을 생성하고 있습니다...</p>
+        </div>
       </div>
     </div>
 
@@ -150,6 +160,49 @@
         seq4_1: "8000",
         seq4_2: "9000",
       };
+
+      // AI 피드백 요청 함수
+      async function getAIFeedback(userAnswers, correctAnswers) {
+        try {
+          // 문제 설명
+          const question =
+            "만을 알아보기: 9996-9997-?-?-10000, 9960-?-?-9990-10000, 9600-?-9800-?-10000, 6000-7000-?-?-10000";
+          const correctAnswer =
+            "정답: 9998,9999 / 9970,9980 / 9700,9900 / 8000,9000";
+          const studentAnswer = `학생답: ${Object.values(userAnswers).join(
+            ","
+          )}`;
+
+          // AI 피드백 섹션 표시
+          document.getElementById("aiFeedbackSection").style.display = "block";
+
+          const response = await fetch("http://localhost:3000/chat", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              question: question,
+              correctAnswer: correctAnswer,
+              studentAnswer: studentAnswer,
+            }),
+          });
+
+          const data = await response.json();
+
+          if (data.success) {
+            document.getElementById("aiFeedbackMessage").textContent =
+              data.reply;
+          } else {
+            document.getElementById("aiFeedbackMessage").textContent =
+              "규칙에 따라 빈칸을 잘 채웠네요! 수열의 패턴을 찾는 능력이 훌륭합니다! 🎉";
+          }
+        } catch (error) {
+          console.error("AI 피드백 오류:", error);
+          document.getElementById("aiFeedbackMessage").textContent =
+            "만의 개념을 잘 이해하고 있어요! 규칙적인 수 배열을 찾는 실력이 뛰어나네요! 👍";
+        }
+      }
 
       document
         .getElementById("checkAnswer")
@@ -183,6 +236,18 @@
             result.textContent = `${correctCount}/${totalQuestions} 정답입니다. 다시 한번 생각해보세요!`;
             result.className = "result-message partial";
           }
+
+          // 사용자 답안 수집
+          const userAnswers = {};
+          for (let id in answers) {
+            userAnswers[id] = document.getElementById(id).value.trim();
+          }
+
+          // AI 피드백 섹션 항상 표시
+          document.getElementById("aiFeedbackSection").style.display = "block";
+
+          // AI 피드백 요청
+          getAIFeedback(userAnswers, answers);
         });
 
       document

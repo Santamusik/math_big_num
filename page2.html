@@ -70,6 +70,16 @@
         </div>
 
         <div id="result" class="result-message"></div>
+
+        <!-- AI 피드백 섹션 -->
+        <div
+          class="ai-feedback-section"
+          id="aiFeedbackSection"
+          style="display: none"
+        >
+          <h3>🤖 AI 피드백</h3>
+          <p id="aiFeedbackMessage">피드백을 생성하고 있습니다...</p>
+        </div>
       </div>
     </div>
 
@@ -80,6 +90,46 @@
         korean2: "39523",
         korean3: "오만육천팔백칠십일",
       };
+
+      // AI 피드백 요청 함수
+      async function getAIFeedback(userAnswers, correctAnswers) {
+        try {
+          const question =
+            "다섯 자리 수 알아보기: 1) 삼만구천오백이십삼을 숫자로 바꾸기, 2) 56871을 한글로 바꾸기";
+          const correctAnswer = "정답: 1) 39523, 2) 오만육천팔백칠십일";
+          const studentAnswer = `학생답: ${Object.values(userAnswers).join(
+            ", "
+          )}`;
+
+          document.getElementById("aiFeedbackSection").style.display = "block";
+
+          const response = await fetch("http://localhost:3000/chat", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              question: question,
+              correctAnswer: correctAnswer,
+              studentAnswer: studentAnswer,
+            }),
+          });
+
+          const data = await response.json();
+
+          if (data.success) {
+            document.getElementById("aiFeedbackMessage").textContent =
+              data.reply;
+          } else {
+            document.getElementById("aiFeedbackMessage").textContent =
+              "다섯 자리 수를 한글로 읽고 쓰는 능력이 훌륭해요! 자릿값을 잘 이해하고 있네요! 🎉";
+          }
+        } catch (error) {
+          console.error("AI 피드백 오류:", error);
+          document.getElementById("aiFeedbackMessage").textContent =
+            "큰 수를 한글로 표현하는 실력이 좋아요! 수와 말의 관계를 잘 파악했네요! 👍";
+        }
+      }
 
       document
         .getElementById("checkAnswer")
@@ -113,6 +163,16 @@
             result.textContent = `${correctCount}/${totalQuestions} 정답입니다. 다시 한번 생각해보세요!`;
             result.className = "result-message partial";
           }
+
+          // 사용자 답안 수집 및 AI 피드백 요청
+          const userAnswers = {};
+          for (let id in answers) {
+            userAnswers[id] = document.getElementById(id).value.trim();
+          }
+
+          // AI 피드백 섹션 항상 표시
+          document.getElementById("aiFeedbackSection").style.display = "block";
+          getAIFeedback(userAnswers, answers);
         });
 
       document

@@ -29,4 +29,7 @@ pids
 .npm
 
 # Optional eslint cache
-.eslintcache 
+.eslintcache
+
+node_modules/
+.env 
