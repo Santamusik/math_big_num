@@ -16,6 +16,19 @@ app.use(
 
 app.use(express.json());
 
+// CORS 설정 (유니티에서 API 접근 가능하도록)
+app.use((req, res, next) => {
+  res.header("Access-Control-Allow-Origin", "*");
+  res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+
+  if (req.method === "OPTIONS") {
+    res.sendStatus(200);
+  } else {
+    next();
+  }
+});
+
 // 정적 파일 서빙 (HTML, CSS, JS 파일들)
 app.use(express.static("."));
 
@@ -494,7 +507,74 @@ app.post("/api/admin/create-class-code", (req, res) => {
   }
 });
 
-// AI 피드백 엔드포인트
+// 유니티용 AI 피드백 엔드포인트 (CORS 설정 포함)
+app.post("/unity/feedback", async (req, res) => {
+  // CORS 헤더 추가 (유니티에서 접근 가능하도록)
+  res.header("Access-Control-Allow-Origin", "*");
+  res.header("Access-Control-Allow-Headers", "Content-Type");
+
+  try {
+    const { question, correctAnswer, studentAnswer, gameContext } = req.body;
+
+    // 게임 맥락을 고려한 프롬프트
+    const prompt = `
+게임 환경에서의 수학 문제 피드백입니다.
+
+문제: ${question}
+정답: ${correctAnswer}  
+학생의 답: ${studentAnswer}
+게임 상황: ${gameContext || "일반 문제 풀이"}
+
+먼저 학생의 답이 정답과 일치하는지 정확히 판단해주세요.
+
+만약 정답이면:
+- "정답이에요!" 또는 "맞았어요!"로 시작
+- 게임적 요소 포함: "훌륭해요!", "대단해요!" 같은 격려
+- 다음 단계 또는 다음 문제에 대한 기대감 조성
+
+만약 틀렸다면:  
+- "다시 한번 생각해볼까요?" 또는 "거의 다 왔어요!"로 시작
+- 게임에 맞는 힌트 제공 (너무 직접적이지 않게)
+- 포기하지 않도록 격려하는 메시지
+
+게임 환경에 맞게 친근하고 재미있는 톤으로 2-3문장 작성해주세요.
+`;
+
+    const completion = await openai.chat.completions.create({
+      messages: [
+        {
+          role: "system",
+          content:
+            "당신은 게임 속 친근한 수학 선생님입니다. 학생들이 재미있게 학습할 수 있도록 게임적 요소를 포함한 피드백을 제공합니다. '~네요', '~해보세요' 같은 친근한 표현을 사용하며, 게임 환경에 적합한 격려와 힌트를 줍니다.",
+        },
+        {
+          role: "user",
+          content: prompt,
+        },
+      ],
+      model: "gpt-4o",
+      max_tokens: 150,
+      temperature: 0.7,
+    });
+
+    const feedback = completion.choices[0].message.content;
+
+    res.json({
+      success: true,
+      feedback: feedback,
+      isCorrect:
+        studentAnswer.toString().trim() === correctAnswer.toString().trim(),
+    });
+  } catch (error) {
+    console.error("Unity AI 피드백 오류:", error);
+    res.status(500).json({
+      success: false,
+      error: "AI 피드백을 생성하는 중 오류가 발생했습니다.",
+    });
+  }
+});
+
+// 웹용 AI 피드백 엔드포인트 (기존)
 app.post("/chat", async (req, res) => {
   try {
     const { question, correctAnswer, studentAnswer } = req.body;
