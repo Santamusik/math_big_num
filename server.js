@@ -1,7 +1,7 @@
 const express = require("express");
 const cors = require("cors");
 const OpenAI = require("openai");
-require("dotenv").config();
+require("dotenv").config({ path: "key.env" });
 
 const app = express();
 const port = 3000;
@@ -15,6 +15,9 @@ app.use(
 );
 
 app.use(express.json());
+
+// 정적 파일 서빙 (HTML, CSS, JS 파일들)
+app.use(express.static("."));
 
 // OpenAI 설정
 const openai = new OpenAI({
