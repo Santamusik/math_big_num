@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>선생님 관리 페이지 - 큰수학습</title>
+    <link rel="stylesheet" href="style.css" />
+    <style>
+      .admin-container {
+        max-width: 1200px;
+        margin: 30px auto;
+        padding: 20px;
+      }
+
+      .admin-header {
+        background: linear-gradient(135deg, #2196f3, #1976d2);
+        color: white;
+        padding: 30px;
+        border-radius: 15px;
+        text-align: center;
+        margin-bottom: 30px;
+      }
+
+      .admin-sections {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 30px;
+        margin-bottom: 30px;
+      }
+
+      .admin-section {
+        background: white;
+        border-radius: 15px;
+        padding: 25px;
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        border: 2px solid #e3f2fd;
+      }
+
+      .section-title {
+        color: #1976d2;
+        font-size: 20px;
+        font-weight: bold;
+        margin-bottom: 20px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .school-code-display {
+        background: #f8f9fa;
+        border: 2px dashed #4caf50;
+        border-radius: 10px;
+        padding: 20px;
+        text-align: center;
+        margin: 15px 0;
+      }
+
+      .school-code {
+        font-size: 24px;
+        font-weight: bold;
+        color: #2e7d32;
+        font-family: "Courier New", monospace;
+        letter-spacing: 2px;
+      }
+
+      .students-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 15px;
+      }
+
+      .students-table th,
+      .students-table td {
+        padding: 12px;
+        text-align: left;
+        border-bottom: 1px solid #ddd;
+      }
+
+      .students-table th {
+        background: #f5f5f5;
+        font-weight: bold;
+        color: #333;
+      }
+
+      .progress-bar {
+        width: 100%;
+        height: 8px;
+        background: #e0e0e0;
+        border-radius: 4px;
+        overflow: hidden;
+      }
+
+      .progress-fill {
+        height: 100%;
+        background: linear-gradient(90deg, #4caf50, #8bc34a);
+        border-radius: 4px;
+        transition: width 0.3s ease;
+      }
+
+      .btn-primary {
+        background: #4caf50;
+        color: white;
+        border: none;
+        padding: 12px 24px;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 16px;
+        transition: all 0.2s;
+      }
+
+      .btn-primary:hover {
+        background: #45a049;
+        transform: translateY(-2px);
+      }
+
+      .btn-secondary {
+        background: #2196f3;
+        color: white;
+        border: none;
+        padding: 8px 16px;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 14px;
+      }
+
+      .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 15px;
+        margin: 20px 0;
+      }
+
+      .stat-card {
+        background: linear-gradient(135deg, #e3f2fd, #f1f8e9);
+        padding: 15px;
+        border-radius: 10px;
+        text-align: center;
+        border: 2px solid #4caf50;
+      }
+
+      .stat-number {
+        font-size: 24px;
+        font-weight: bold;
+        color: #2e7d32;
+      }
+
+      .stat-label {
+        font-size: 12px;
+        color: #666;
+        margin-top: 5px;
+      }
+
+      .copy-button {
+        background: #ff9800;
+        color: white;
+        border: none;
+        padding: 8px 16px;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 14px;
+        margin-left: 10px;
+      }
+
+      @media (max-width: 768px) {
+        .admin-sections {
+          grid-template-columns: 1fr;
+        }
+
+        .stats-grid {
+          grid-template-columns: repeat(2, 1fr);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="admin-container">
+        <div class="admin-header">
+          <h1>👩‍🏫 선생님 관리 페이지</h1>
+          <p>학급 관리 및 학생 진도 현황을 확인하세요</p>
+        </div>
+
+        <div class="admin-sections">
+          <div class="admin-section">
+            <div class="section-title">🏫 학교 정보 설정</div>
+
+            <div class="form-group">
+              <label>학교명</label>
+              <input
+                type="text"
+                id="schoolName"
+                placeholder="예: 서울초등학교"
+              />
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label>학년</label>
+                <select id="grade">
+                  <option value="">선택</option>
+                  <option value="1">1학년</option>
+                  <option value="2">2학년</option>
+                  <option value="3">3학년</option>
+                  <option value="4">4학년</option>
+                  <option value="5">5학년</option>
+                  <option value="6">6학년</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>반</label>
+                <select id="classNumber">
+                  <option value="">선택</option>
+                  <option value="1">1반</option>
+                  <option value="2">2반</option>
+                  <option value="3">3반</option>
+                  <option value="4">4반</option>
+                  <option value="5">5반</option>
+                  <option value="6">6반</option>
+                  <option value="7">7반</option>
+                  <option value="8">8반</option>
+                  <option value="9">9반</option>
+                  <option value="10">10반</option>
+                </select>
+              </div>
+            </div>
+
+            <button class="btn-primary" id="generateCodeBtn">
+              학급 코드 생성
+            </button>
+
+            <div
+              id="schoolCodeDisplay"
+              class="school-code-display"
+              style="display: none"
+            >
+              <div>📋 학생 등록 코드</div>
+              <div class="school-code" id="schoolCode"></div>
+              <button class="copy-button" id="copyCodeBtn">코드 복사</button>
+              <div style="margin-top: 15px; font-size: 14px; color: #666">
+                학생들에게 이 코드를 알려주세요!<br />
+                등록할 때 "학급 코드로 등록" 버튼을 누르고 입력하면 됩니다.
+              </div>
+            </div>
+          </div>
+
+          <div class="admin-section">
+            <div class="section-title">📊 학급 현황</div>
+
+            <div class="stats-grid" id="statsGrid">
+              <div class="stat-card">
+                <div class="stat-number" id="totalStudents">0</div>
+                <div class="stat-label">전체 학생</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-number" id="completedStudents">0</div>
+                <div class="stat-label">완료 학생</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-number" id="averageProgress">0%</div>
+                <div class="stat-label">평균 진도</div>
+              </div>
+            </div>
+
+            <button class="btn-secondary" id="refreshBtn">현황 새로고침</button>
+          </div>
+        </div>
+
+        <div class="admin-section">
+          <div class="section-title">👥 학생 목록 및 진도</div>
+
+          <table class="students-table" id="studentsTable">
+            <thead>
+              <tr>
+                <th>번호</th>
+                <th>이름</th>
+                <th>진도</th>
+                <th>완료율</th>
+                <th>마지막 접속</th>
+              </tr>
+            </thead>
+            <tbody id="studentsTableBody">
+              <tr>
+                <td colspan="5" style="text-align: center; color: #666">
+                  학급 코드를 생성하고 현황을 새로고침해주세요.
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <script src="config.js"></script>
+    <script>
+      let currentSchoolCode = null;
+      let currentClassInfo = null;
+
+      // 학급 코드 생성
+      document
+        .getElementById("generateCodeBtn")
+        .addEventListener("click", async function () {
+          const schoolName = document.getElementById("schoolName").value;
+          const grade = document.getElementById("grade").value;
+          const classNumber = document.getElementById("classNumber").value;
+
+          if (!schoolName || !grade || !classNumber) {
+            alert("학교명, 학년, 반을 모두 입력해주세요.");
+            return;
+          }
+
+          // 학급 코드 생성 (학교명 2글자 + 학년 + 반 + 랜덤 4자리)
+          const schoolCode = schoolName.slice(0, 2);
+          const randomCode = Math.random()
+            .toString(36)
+            .substr(2, 4)
+            .toUpperCase();
+          const classCode = `${schoolCode}${grade}${classNumber.padStart(
+            2,
+            "0"
+          )}${randomCode}`;
+
+          try {
+            // 서버에 학급 코드 등록
+            const response = await fetch("/api/admin/create-class-code", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                classCode: classCode,
+                schoolName: schoolName,
+                grade: parseInt(grade),
+                classNumber: parseInt(classNumber),
+              }),
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+              currentSchoolCode = classCode;
+              currentClassInfo = {
+                schoolName,
+                grade: parseInt(grade),
+                classNumber: parseInt(classNumber),
+              };
+
+              document.getElementById("schoolCode").textContent = classCode;
+              document.getElementById("schoolCodeDisplay").style.display =
+                "block";
+
+              // 현황 새로고침
+              refreshClassStats();
+
+              alert("학급 코드가 성공적으로 생성되었습니다!");
+            } else {
+              alert("학급 코드 생성 실패: " + data.error);
+            }
+          } catch (error) {
+            console.error("학급 코드 생성 오류:", error);
+            alert("학급 코드 생성 중 오류가 발생했습니다.");
+          }
+        });
+
+      // 코드 복사
+      document
+        .getElementById("copyCodeBtn")
+        .addEventListener("click", function () {
+          const code = document.getElementById("schoolCode").textContent;
+          navigator.clipboard.writeText(code).then(function () {
+            alert("학급 코드가 복사되었습니다: " + code);
+          });
+        });
+
+      // 현황 새로고침
+      document
+        .getElementById("refreshBtn")
+        .addEventListener("click", refreshClassStats);
+
+      async function refreshClassStats() {
+        if (!currentClassInfo) {
+          alert("먼저 학급 코드를 생성해주세요.");
+          return;
+        }
+
+        try {
+          const response = await fetch("/api/admin/class-stats", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(currentClassInfo),
+          });
+
+          const data = await response.json();
+
+          if (data.success) {
+            updateStats(data.stats);
+            updateStudentsTable(data.students);
+          } else {
+            console.error("현황 조회 실패:", data.error);
+          }
+        } catch (error) {
+          console.error("현황 조회 오류:", error);
+        }
+      }
+
+      function updateStats(stats) {
+        document.getElementById("totalStudents").textContent =
+          stats.totalStudents;
+        document.getElementById("completedStudents").textContent =
+          stats.completedStudents;
+        document.getElementById("averageProgress").textContent =
+          stats.averageProgress + "%";
+      }
+
+      function updateStudentsTable(students) {
+        const tbody = document.getElementById("studentsTableBody");
+        tbody.innerHTML = "";
+
+        if (students.length === 0) {
+          tbody.innerHTML =
+            '<tr><td colspan="5" style="text-align: center; color: #666;">아직 등록된 학생이 없습니다.</td></tr>';
+          return;
+        }
+
+        students.forEach((student) => {
+          const row = document.createElement("tr");
+          const completionRate = Math.round(
+            (student.completedPages.length / 7) * 100
+          );
+          const lastAccess = new Date(student.lastAccess).toLocaleDateString(
+            "ko-KR"
+          );
+
+          row.innerHTML = `
+                    <td>${student.studentNumber}</td>
+                    <td>${student.studentName}</td>
+                    <td>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: ${completionRate}%"></div>
+                        </div>
+                        ${student.completedPages.length}/7 단계
+                    </td>
+                    <td>${completionRate}%</td>
+                    <td>${lastAccess}</td>
+                `;
+          tbody.appendChild(row);
+        });
+      }
+    </script>
+  </body>
+</html>

@@ -198,6 +198,16 @@
           <button type="button" id="existingStudentBtn">
             기존 계정으로 로그인
           </button>
+
+          <div style="margin: 20px 0; text-align: center">
+            <hr style="margin: 15px 0" />
+            <p>또는</p>
+          </div>
+
+          <p>선생님이 알려준 학급 코드가 있나요?</p>
+          <button type="button" id="classCodeBtn" style="background: #ff9800">
+            학급 코드로 등록
+          </button>
         </div>
       </div>
     </div>
@@ -318,6 +328,50 @@
           } catch (error) {
             console.error("학생 검색 오류:", error);
             alert("학생 검색 중 오류가 발생했습니다.");
+          }
+        });
+
+      // 학급 코드로 등록
+      document
+        .getElementById("classCodeBtn")
+        .addEventListener("click", async function () {
+          const classCode = prompt("선생님이 알려준 학급 코드를 입력하세요:");
+          if (!classCode) return;
+
+          const studentName = prompt("학생 이름을 입력하세요:");
+          if (!studentName) return;
+
+          const studentNumber = prompt("학생 번호를 입력하세요:");
+          if (!studentNumber) return;
+
+          try {
+            const response = await fetch("/api/student/register-with-code", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                classCode: classCode,
+                studentName: studentName,
+                studentNumber: parseInt(studentNumber),
+              }),
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+              localStorage.setItem("studentId", data.student.id);
+              localStorage.setItem("studentInfo", JSON.stringify(data.student));
+              alert(
+                `${data.student.studentName}님, 등록이 완료되었습니다!\n${data.student.schoolName} ${data.student.grade}학년 ${data.student.classNumber}반으로 등록되었습니다.`
+              );
+              window.location.href = "index.html";
+            } else {
+              alert("등록 실패: " + data.error);
+            }
+          } catch (error) {
+            console.error("학급 코드 등록 오류:", error);
+            alert("등록 중 오류가 발생했습니다.");
           }
         });
 

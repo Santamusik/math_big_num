@@ -22,6 +22,9 @@ app.use(express.static("."));
 // 학습 데이터 저장소 (메모리 기반 - 나중에 DB로 업그레이드 가능)
 const studentsData = new Map();
 
+// 학급 코드 저장소 (코드 -> 학급 정보 매핑)
+const classCodes = new Map();
+
 // 학생 ID 생성 함수 (학교-학년-반-번호 기반)
 function generateStudentId(schoolName, grade, classNumber, studentNumber) {
   const schoolCode = schoolName.slice(0, 2);
@@ -112,6 +115,80 @@ app.post("/api/student/register", (req, res) => {
     res.status(500).json({
       success: false,
       error: "학생 등록 중 오류가 발생했습니다.",
+    });
+  }
+});
+
+// 학급 코드로 학생 등록
+app.post("/api/student/register-with-code", (req, res) => {
+  try {
+    const { classCode, studentName, studentNumber } = req.body;
+
+    if (!classCode || !studentName || !studentNumber) {
+      return res.status(400).json({
+        success: false,
+        error: "모든 정보를 입력해주세요.",
+      });
+    }
+
+    // 유효한 학급 코드인지 확인
+    if (!classCodes.has(classCode)) {
+      return res.status(404).json({
+        success: false,
+        error: "유효하지 않은 학급 코드입니다.",
+      });
+    }
+
+    const classInfo = classCodes.get(classCode);
+
+    // 중복 학생 확인 (같은 학급, 같은 학번)
+    for (const [id, student] of studentsData) {
+      if (
+        student.schoolName === classInfo.schoolName &&
+        student.grade === classInfo.grade &&
+        student.classNumber === classInfo.classNumber &&
+        student.studentNumber === studentNumber
+      ) {
+        return res.status(409).json({
+          success: false,
+          error: "이미 등록된 학번입니다.",
+        });
+      }
+    }
+
+    // 새 학생 ID 생성
+    const newStudentId = generateStudentId(
+      classInfo.schoolName,
+      classInfo.grade,
+      classInfo.classNumber,
+      studentNumber
+    );
+
+    const studentData = {
+      id: newStudentId,
+      schoolName: classInfo.schoolName,
+      grade: classInfo.grade,
+      classNumber: classInfo.classNumber,
+      studentNumber: studentNumber,
+      studentName: studentName,
+      createdAt: new Date().toISOString(),
+      completedPages: [],
+      scores: {},
+      totalStudyTime: 0,
+      lastAccess: new Date().toISOString(),
+    };
+
+    studentsData.set(newStudentId, studentData);
+
+    res.json({
+      success: true,
+      student: studentData,
+    });
+  } catch (error) {
+    console.error("학급 코드 등록 오류:", error);
+    res.status(500).json({
+      success: false,
+      error: "등록 중 오류가 발생했습니다.",
     });
   }
 });
@@ -268,6 +345,103 @@ app.get("/api/progress/:studentId", (req, res) => {
 // OpenAI 설정
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
+});
+
+// 관리자 기능 - 학급 현황 조회
+app.post("/api/admin/class-stats", (req, res) => {
+  try {
+    const { schoolName, grade, classNumber } = req.body;
+
+    if (!schoolName || !grade || !classNumber) {
+      return res.status(400).json({
+        success: false,
+        error: "학급 정보를 모두 입력해주세요.",
+      });
+    }
+
+    // 해당 학급 학생들 필터링
+    const classStudents = [];
+    for (const [id, student] of studentsData) {
+      if (
+        student.schoolName === schoolName &&
+        student.grade === grade &&
+        student.classNumber === classNumber
+      ) {
+        classStudents.push(student);
+      }
+    }
+
+    // 통계 계산
+    const totalStudents = classStudents.length;
+    const completedStudents = classStudents.filter(
+      (s) => s.completedPages.length === 7
+    ).length;
+    const totalProgress = classStudents.reduce(
+      (sum, s) => sum + s.completedPages.length,
+      0
+    );
+    const averageProgress =
+      totalStudents > 0
+        ? Math.round((totalProgress / (totalStudents * 7)) * 100)
+        : 0;
+
+    // 학번순 정렬
+    classStudents.sort((a, b) => a.studentNumber - b.studentNumber);
+
+    res.json({
+      success: true,
+      stats: {
+        totalStudents,
+        completedStudents,
+        averageProgress,
+      },
+      students: classStudents,
+    });
+  } catch (error) {
+    console.error("학급 현황 조회 오류:", error);
+    res.status(500).json({
+      success: false,
+      error: "현황 조회 중 오류가 발생했습니다.",
+    });
+  }
+});
+
+// 관리자 기능 - 학급 코드 생성 API
+app.post("/api/admin/create-class-code", (req, res) => {
+  try {
+    const { classCode, schoolName, grade, classNumber } = req.body;
+
+    if (!classCode || !schoolName || !grade || !classNumber) {
+      return res.status(400).json({
+        success: false,
+        error: "모든 정보를 입력해주세요.",
+      });
+    }
+
+    // 학급 코드 저장
+    classCodes.set(classCode, {
+      schoolName,
+      grade,
+      classNumber,
+      createdAt: new Date().toISOString(),
+    });
+
+    console.log(
+      `새 학급 코드 생성: ${classCode} (${schoolName} ${grade}학년 ${classNumber}반)`
+    );
+
+    res.json({
+      success: true,
+      message: "학급 코드가 생성되었습니다.",
+      classCode: classCode,
+    });
+  } catch (error) {
+    console.error("학급 코드 생성 오류:", error);
+    res.status(500).json({
+      success: false,
+      error: "학급 코드 생성 중 오류가 발생했습니다.",
+    });
+  }
 });
 
 // AI 피드백 엔드포인트
