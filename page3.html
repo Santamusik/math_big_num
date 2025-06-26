@@ -102,12 +102,20 @@
       // AI 피드백 요청 함수
       async function getAIFeedback(userAnswers, correctAnswers) {
         try {
-          const question =
-            "십만, 백만, 천만 알아보기: 1만이 10개→?, 10만이 10개→?, 100만이 10개→?, 10000이 86297개→?";
-          const correctAnswer = "정답: 100000, 1000000, 10000000, 862970000";
-          const studentAnswer = `학생답: ${Object.values(userAnswers).join(
-            ", "
-          )}`;
+          const question = `
+문제 1: 1만이 10개 → 답: ${userAnswers.conv1 || "(빈칸)"}
+문제 2: 10만이 10개 → 답: ${userAnswers.conv2 || "(빈칸)"}  
+문제 3: 100만이 10개 → 답: ${userAnswers.conv3 || "(빈칸)"}
+문제 4: 10000이 86297개인 수는 → 답: ${userAnswers.calc1 || "(빈칸)"}`;
+
+          const correctAnswer = `
+정답:
+문제 1: 10만 (100000)
+문제 2: 100만 (1000000)
+문제 3: 1000만 (10000000)
+문제 4: 862970000`;
+
+          const studentAnswer = question; // 이미 학생 답이 포함됨
 
           document.getElementById("aiFeedbackSection").style.display = "block";
 

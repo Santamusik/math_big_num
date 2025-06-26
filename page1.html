@@ -164,14 +164,28 @@
       // AI 피드백 요청 함수
       async function getAIFeedback(userAnswers, correctAnswers) {
         try {
-          // 문제 설명
-          const question =
-            "만을 알아보기: 9996-9997-?-?-10000, 9960-?-?-9990-10000, 9600-?-9800-?-10000, 6000-7000-?-?-10000";
-          const correctAnswer =
-            "정답: 9998,9999 / 9970,9980 / 9700,9900 / 8000,9000";
-          const studentAnswer = `학생답: ${Object.values(userAnswers).join(
-            ","
-          )}`;
+          const question = `
+문제 1: 9996 - 9997 - ${userAnswers.seq1_1 || "(빈칸)"} - ${
+            userAnswers.seq1_2 || "(빈칸)"
+          } - 10000
+문제 2: 9960 - ${userAnswers.seq2_1 || "(빈칸)"} - ${
+            userAnswers.seq2_2 || "(빈칸)"
+          } - 9990 - 10000  
+문제 3: 9600 - ${userAnswers.seq3_1 || "(빈칸)"} - 9800 - ${
+            userAnswers.seq3_2 || "(빈칸)"
+          } - 10000
+문제 4: 6000 - 7000 - ${userAnswers.seq4_1 || "(빈칸)"} - ${
+            userAnswers.seq4_2 || "(빈칸)"
+          } - 10000`;
+
+          const correctAnswer = `
+정답:
+문제 1: 9998, 9999 (1씩 증가)
+문제 2: 9970, 9980 (10씩 증가)
+문제 3: 9700, 9900 (100씩 증가)
+문제 4: 8000, 9000 (1000씩 증가)`;
+
+          const studentAnswer = question; // 이미 학생 답이 포함됨
 
           // AI 피드백 섹션 표시
           document.getElementById("aiFeedbackSection").style.display = "block";
