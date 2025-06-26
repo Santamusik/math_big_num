@@ -29,6 +29,11 @@ app.post("/chat", async (req, res) => {
   try {
     const { question, correctAnswer, studentAnswer } = req.body;
 
+    console.log("=== AI 피드백 요청 ===");
+    console.log("문제:", question);
+    console.log("정답:", correctAnswer);
+    console.log("학생답:", studentAnswer);
+
     const prompt = `
 문제: ${question}
 정답: ${correctAnswer}  
@@ -48,6 +53,9 @@ app.post("/chat", async (req, res) => {
 초등학생이 이해하기 쉬운 말로, "~했네요", "~해보세요" 같은 부드러운 말투를 사용해서 2-3문장으로 작성해주세요.
 `;
 
+    console.log("=== 전송할 프롬프트 ===");
+    console.log(prompt);
+
     const completion = await openai.chat.completions.create({
       messages: [
         {
@@ -66,6 +74,9 @@ app.post("/chat", async (req, res) => {
     });
 
     const feedback = completion.choices[0].message.content;
+
+    console.log("=== AI 응답 ===");
+    console.log(feedback);
 
     res.json({
       success: true,
