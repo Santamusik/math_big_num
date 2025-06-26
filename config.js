@@ -161,42 +161,53 @@ const pageConfig = {
       // localStorage에서 학생 ID 확인
       let studentId = localStorage.getItem("studentId");
 
-      const response = await fetch("/api/student", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          studentId: studentId,
-          studentName: localStorage.getItem("studentName") || null,
-        }),
+      if (!studentId) {
+        // 학생 정보가 없으면 등록 페이지로 리다이렉트
+        if (
+          window.location.pathname !== "/student-register.html" &&
+          !window.location.pathname.includes("student-register.html")
+        ) {
+          window.location.href = "student-register.html";
+          return false;
+        }
+        return false;
+      }
+
+      const response = await fetch(`/api/progress/${studentId}`, {
+        method: "GET",
       });
 
       const data = await response.json();
 
       if (data.success) {
         this.currentStudent = data.student;
-        localStorage.setItem("studentId", data.student.id);
-
-        // 이름이 없으면 입력 받기
-        if (!data.student.name || data.student.name === "익명 학생") {
-          const name = prompt("학습자 이름을 입력해주세요:");
-          if (name) {
-            localStorage.setItem("studentName", name);
-            this.currentStudent.name = name;
-          }
-        }
-
         console.log(
           "학생 로그인:",
-          this.currentStudent.name,
-          this.currentStudent.id
+          this.currentStudent.studentName,
+          `${this.currentStudent.schoolName} ${this.currentStudent.grade}학년 ${this.currentStudent.classNumber}반 ${this.currentStudent.studentNumber}번`
         );
         return true;
+      } else {
+        // 학생을 찾을 수 없으면 등록 페이지로
+        localStorage.removeItem("studentId");
+        localStorage.removeItem("studentInfo");
+        if (
+          window.location.pathname !== "/student-register.html" &&
+          !window.location.pathname.includes("student-register.html")
+        ) {
+          window.location.href = "student-register.html";
+        }
+        return false;
       }
     } catch (error) {
       console.error("학생 초기화 오류:", error);
-      // 오류시 localStorage 방식으로 fallback
+      // 오류시 등록 페이지로 리다이렉트
+      if (
+        window.location.pathname !== "/student-register.html" &&
+        !window.location.pathname.includes("student-register.html")
+      ) {
+        window.location.href = "student-register.html";
+      }
       return false;
     }
   },

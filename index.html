@@ -8,7 +8,13 @@
   </head>
   <body>
         <div class="container">
-        <h1>큰수학습 홈페이지</h1>
+        <div class="header-section">
+            <h1>큰수학습 홈페이지</h1>
+            <div id="studentInfo" class="student-info" style="display: none;">
+                <span id="studentDetails"></span>
+                <button id="changeStudentBtn" class="btn-small">학생 변경</button>
+            </div>
+        </div>
         
         <div class="main-menu">
             <h2>큰수를 알아보기</h2>
@@ -133,7 +139,30 @@
       // 페이지 접근 제한 적용
       document.addEventListener('DOMContentLoaded', async function() {
         // 학생 초기화
-        await pageConfig.initStudent();
+        const isStudentReady = await pageConfig.initStudent();
+        
+        if (isStudentReady && pageConfig.currentStudent) {
+          // 학생 정보 표시
+          const studentInfo = document.getElementById('studentInfo');
+          const studentDetails = document.getElementById('studentDetails');
+          const student = pageConfig.currentStudent;
+          
+          studentDetails.innerHTML = `
+            👨‍🎓 <strong>${student.studentName}</strong> | 
+            🏫 ${student.schoolName} ${student.grade}학년 ${student.classNumber}반 ${student.studentNumber}번
+          `;
+          studentInfo.style.display = 'block';
+          
+          // 학생 변경 버튼 이벤트
+          document.getElementById('changeStudentBtn').addEventListener('click', function() {
+            if (confirm('정말로 학생을 변경하시겠습니까? 현재 진도는 서버에 저장됩니다.')) {
+              localStorage.removeItem('studentId');
+              localStorage.removeItem('studentInfo');
+              window.location.href = 'student-register.html';
+            }
+          });
+        }
+        
         const completed = pageConfig.getCompletedPages();
         const pageCards = document.querySelectorAll('.page-card');
         

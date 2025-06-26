@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>학생 등록 - 큰수학습</title>
+    <link rel="stylesheet" href="style.css" />
+    <style>
+      .register-container {
+        max-width: 500px;
+        margin: 50px auto;
+        padding: 30px;
+        background: white;
+        border-radius: 15px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+      }
+
+      .register-form {
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+      }
+
+      .form-group {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      .form-group label {
+        font-weight: bold;
+        color: #333;
+        font-size: 16px;
+      }
+
+      .form-group input,
+      .form-group select {
+        padding: 12px;
+        border: 2px solid #ddd;
+        border-radius: 8px;
+        font-size: 16px;
+        transition: border-color 0.3s;
+      }
+
+      .form-group input:focus,
+      .form-group select:focus {
+        outline: none;
+        border-color: #4caf50;
+      }
+
+      .register-button {
+        background: linear-gradient(135deg, #4caf50, #45a049);
+        color: white;
+        border: none;
+        padding: 15px;
+        border-radius: 8px;
+        font-size: 18px;
+        font-weight: bold;
+        cursor: pointer;
+        transition: transform 0.2s;
+      }
+
+      .register-button:hover {
+        transform: translateY(-2px);
+      }
+
+      .register-button:disabled {
+        background: #ccc;
+        cursor: not-allowed;
+        transform: none;
+      }
+
+      .form-row {
+        display: flex;
+        gap: 15px;
+      }
+
+      .form-row .form-group {
+        flex: 1;
+      }
+
+      .welcome-message {
+        text-align: center;
+        margin-bottom: 30px;
+      }
+
+      .welcome-message h1 {
+        color: #4caf50;
+        margin-bottom: 10px;
+      }
+
+      .welcome-message p {
+        color: #666;
+        font-size: 16px;
+      }
+
+      .existing-student {
+        text-align: center;
+        margin-top: 20px;
+        padding-top: 20px;
+        border-top: 1px solid #eee;
+      }
+
+      .existing-student button {
+        background: #2196f3;
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 14px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="register-container">
+        <div class="welcome-message">
+          <h1>🏫 큰수학습 시작하기</h1>
+          <p>학습을 시작하기 전에 학생 정보를 입력해주세요</p>
+        </div>
+
+        <form class="register-form" id="registerForm">
+          <div class="form-group">
+            <label for="schoolName">학교명</label>
+            <input
+              type="text"
+              id="schoolName"
+              name="schoolName"
+              placeholder="예: 서울초등학교"
+              required
+            />
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="grade">학년</label>
+              <select id="grade" name="grade" required>
+                <option value="">선택하세요</option>
+                <option value="1">1학년</option>
+                <option value="2">2학년</option>
+                <option value="3">3학년</option>
+                <option value="4">4학년</option>
+                <option value="5">5학년</option>
+                <option value="6">6학년</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="classNumber">반</label>
+              <select id="classNumber" name="classNumber" required>
+                <option value="">선택하세요</option>
+                <option value="1">1반</option>
+                <option value="2">2반</option>
+                <option value="3">3반</option>
+                <option value="4">4반</option>
+                <option value="5">5반</option>
+                <option value="6">6반</option>
+                <option value="7">7반</option>
+                <option value="8">8반</option>
+                <option value="9">9반</option>
+                <option value="10">10반</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="studentNumber">번호</label>
+              <input
+                type="number"
+                id="studentNumber"
+                name="studentNumber"
+                min="1"
+                max="40"
+                placeholder="학번"
+                required
+              />
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="studentName">이름</label>
+            <input
+              type="text"
+              id="studentName"
+              name="studentName"
+              placeholder="학생 이름을 입력하세요"
+              required
+            />
+          </div>
+
+          <button type="submit" class="register-button" id="registerBtn">
+            학습 시작하기 🚀
+          </button>
+        </form>
+
+        <div class="existing-student">
+          <p>이미 등록된 학생이신가요?</p>
+          <button type="button" id="existingStudentBtn">
+            기존 계정으로 로그인
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <script src="config.js"></script>
+    <script>
+      document
+        .getElementById("registerForm")
+        .addEventListener("submit", async function (e) {
+          e.preventDefault();
+
+          const registerBtn = document.getElementById("registerBtn");
+          registerBtn.disabled = true;
+          registerBtn.textContent = "등록 중...";
+
+          try {
+            const formData = new FormData(e.target);
+            const studentInfo = {
+              schoolName: formData.get("schoolName"),
+              grade: parseInt(formData.get("grade")),
+              classNumber: parseInt(formData.get("classNumber")),
+              studentNumber: parseInt(formData.get("studentNumber")),
+              studentName: formData.get("studentName"),
+            };
+
+            // 학생 등록 API 호출
+            const response = await fetch("/api/student/register", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify(studentInfo),
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+              // 로컬스토리지에 학생 ID 저장
+              localStorage.setItem("studentId", data.student.id);
+              localStorage.setItem("studentInfo", JSON.stringify(data.student));
+
+              // 메인 페이지로 이동
+              alert(
+                `${studentInfo.studentName}님, 등록이 완료되었습니다!\n학습을 시작해보세요! 🎉`
+              );
+              window.location.href = "index.html";
+            } else {
+              alert("등록 중 오류가 발생했습니다: " + data.error);
+            }
+          } catch (error) {
+            console.error("등록 오류:", error);
+            alert("등록 중 오류가 발생했습니다. 다시 시도해주세요.");
+          } finally {
+            registerBtn.disabled = false;
+            registerBtn.textContent = "학습 시작하기 🚀";
+          }
+        });
+
+      document
+        .getElementById("existingStudentBtn")
+        .addEventListener("click", function () {
+          const studentId = prompt("학생 ID를 입력하세요:");
+          if (studentId) {
+            localStorage.setItem("studentId", studentId);
+            window.location.href = "index.html";
+          }
+        });
+
+      // 이미 등록된 학생인지 확인
+      document.addEventListener("DOMContentLoaded", function () {
+        const existingStudentId = localStorage.getItem("studentId");
+        if (existingStudentId) {
+          if (
+            confirm(
+              "이미 등록된 학생 정보가 있습니다. 메인 페이지로 이동하시겠습니까?"
+            )
+          ) {
+            window.location.href = "index.html";
+          }
+        }
+      });
+    </script>
+  </body>
+</html>

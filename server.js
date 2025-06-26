@@ -22,14 +22,101 @@ app.use(express.static("."));
 // 학습 데이터 저장소 (메모리 기반 - 나중에 DB로 업그레이드 가능)
 const studentsData = new Map();
 
-// 학생 ID 생성 함수
-function generateStudentId() {
+// 학생 ID 생성 함수 (학교-학년-반-번호 기반)
+function generateStudentId(schoolName, grade, classNumber, studentNumber) {
+  const schoolCode = schoolName.slice(0, 2);
+  const timestamp = Date.now().toString().slice(-6);
+  return `${schoolCode}${grade}${classNumber
+    .toString()
+    .padStart(2, "0")}${studentNumber
+    .toString()
+    .padStart(2, "0")}_${timestamp}`;
+}
+
+// 전체 학생 ID 생성 (기존 방식 - 호환성용)
+function generateSimpleStudentId() {
   return (
     "student_" + Date.now() + "_" + Math.random().toString(36).substr(2, 9)
   );
 }
 
-// 학생 등록 또는 기존 학생 정보 가져오기
+// 새로운 학생 등록 (학교 정보 포함)
+app.post("/api/student/register", (req, res) => {
+  try {
+    const { schoolName, grade, classNumber, studentNumber, studentName } =
+      req.body;
+
+    // 필수 정보 확인
+    if (
+      !schoolName ||
+      !grade ||
+      !classNumber ||
+      !studentNumber ||
+      !studentName
+    ) {
+      return res.status(400).json({
+        success: false,
+        error: "모든 정보를 입력해주세요.",
+      });
+    }
+
+    // 중복 학생 확인 (같은 학교, 학년, 반, 번호)
+    for (const [id, student] of studentsData) {
+      if (
+        student.schoolName === schoolName &&
+        student.grade === grade &&
+        student.classNumber === classNumber &&
+        student.studentNumber === studentNumber
+      ) {
+        return res.status(409).json({
+          success: false,
+          error: "이미 등록된 학생입니다.",
+          existingStudent: {
+            id: student.id,
+            name: student.studentName,
+          },
+        });
+      }
+    }
+
+    // 새 학생 ID 생성
+    const newStudentId = generateStudentId(
+      schoolName,
+      grade,
+      classNumber,
+      studentNumber
+    );
+
+    const studentData = {
+      id: newStudentId,
+      schoolName: schoolName,
+      grade: grade,
+      classNumber: classNumber,
+      studentNumber: studentNumber,
+      studentName: studentName,
+      createdAt: new Date().toISOString(),
+      completedPages: [],
+      scores: {},
+      totalStudyTime: 0,
+      lastAccess: new Date().toISOString(),
+    };
+
+    studentsData.set(newStudentId, studentData);
+
+    res.json({
+      success: true,
+      student: studentData,
+    });
+  } catch (error) {
+    console.error("학생 등록 오류:", error);
+    res.status(500).json({
+      success: false,
+      error: "학생 등록 중 오류가 발생했습니다.",
+    });
+  }
+});
+
+// 기존 학생 정보 가져오기 (호환성용)
 app.post("/api/student", (req, res) => {
   try {
     const { studentId, studentName } = req.body;
@@ -41,11 +128,11 @@ app.post("/api/student", (req, res) => {
         student: studentsData.get(studentId),
       });
     } else {
-      // 새 학생 생성
-      const newStudentId = generateStudentId();
+      // 새 학생 생성 (기존 방식 - 호환성용)
+      const newStudentId = generateSimpleStudentId();
       const studentData = {
         id: newStudentId,
-        name: studentName || "익명 학생",
+        studentName: studentName || "익명 학생",
         createdAt: new Date().toISOString(),
         completedPages: [],
         scores: {},
