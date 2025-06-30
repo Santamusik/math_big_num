@@ -163,47 +163,72 @@
           });
         }
         
-        const completed = pageConfig.getCompletedPages();
-        const pageCards = document.querySelectorAll('.page-card');
+        // 페이지 접근 권한 및 완료 상태 업데이트 함수
+        function updatePageStatus() {
+          const completed = pageConfig.getCompletedPages();
+          const pageCards = document.querySelectorAll('.page-card');
+          
+          pageCards.forEach((card, index) => {
+            const pageId = index + 1;
+            const href = card.getAttribute('href');
+            
+            // 기존 체크마크 제거
+            const existingCheck = card.querySelector('.completion-check');
+            if (existingCheck) {
+              existingCheck.remove();
+            }
+            
+            if (href === 'certificate.html') {
+              // 증명서는 모든 7단계 완료 후 접근 가능
+              if (!pageConfig.isCertificateAccessible()) {
+                card.style.opacity = '0.5';
+                card.style.pointerEvents = 'none';
+                card.addEventListener('click', function(e) {
+                  e.preventDefault();
+                  alert('모든 7단계를 완료해야 증명서를 받을 수 있습니다!');
+                });
+              } else {
+                card.style.opacity = '1';
+                card.style.pointerEvents = 'auto';
+              }
+            } else if (pageId > 1) {
+              // 2단계부터는 이전 단계 완료 후 접근 가능
+              if (!pageConfig.isPageAccessible(pageId)) {
+                card.style.opacity = '0.5';
+                card.style.pointerEvents = 'none';
+                card.addEventListener('click', function(e) {
+                  e.preventDefault();
+                  alert(`${pageId - 1}단계를 먼저 완료해주세요!`);
+                });
+              } else {
+                card.style.opacity = '1';
+                card.style.pointerEvents = 'auto';
+              }
+            }
+            
+            // 완료된 페이지에 체크 표시
+            if (completed.includes(pageId)) {
+              const checkMark = document.createElement('div');
+              checkMark.innerHTML = '✅';
+              checkMark.className = 'completion-check';
+              checkMark.style.position = 'absolute';
+              checkMark.style.top = '10px';
+              checkMark.style.right = '10px';
+              checkMark.style.fontSize = '1.5em';
+              card.style.position = 'relative';
+              card.appendChild(checkMark);
+            }
+          });
+        }
         
-        pageCards.forEach((card, index) => {
-          const pageId = index + 1;
-          const href = card.getAttribute('href');
-          
-          if (href === 'certificate.html') {
-            // 증명서는 모든 7단계 완료 후 접근 가능
-            if (!pageConfig.isCertificateAccessible()) {
-              card.style.opacity = '0.5';
-              card.style.pointerEvents = 'none';
-              card.addEventListener('click', function(e) {
-                e.preventDefault();
-                alert('모든 7단계를 완료해야 증명서를 받을 수 있습니다!');
-              });
-            }
-          } else if (pageId > 1) {
-            // 2단계부터는 이전 단계 완료 후 접근 가능
-            if (!pageConfig.isPageAccessible(pageId)) {
-              card.style.opacity = '0.5';
-              card.style.pointerEvents = 'none';
-              card.addEventListener('click', function(e) {
-                e.preventDefault();
-                alert(`${pageId - 1}단계를 먼저 완료해주세요!`);
-              });
-            }
-          }
-          
-          // 완료된 페이지에 체크 표시
-          if (completed.includes(pageId)) {
-            const checkMark = document.createElement('div');
-            checkMark.innerHTML = '✅';
-            checkMark.style.position = 'absolute';
-            checkMark.style.top = '10px';
-            checkMark.style.right = '10px';
-            checkMark.style.fontSize = '1.5em';
-            card.style.position = 'relative';
-            card.appendChild(checkMark);
-          }
-        });
+        // 초기 상태 업데이트
+        updatePageStatus();
+        
+        // 페이지가 포커스를 받을 때마다 상태 업데이트 (다른 탭에서 돌아올 때)
+        window.addEventListener('focus', updatePageStatus);
+        
+        // 주기적으로 상태 업데이트 (5초마다)
+        setInterval(updatePageStatus, 5000);
       });
     </script>
   </body>
