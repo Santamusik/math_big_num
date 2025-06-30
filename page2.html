@@ -162,10 +162,10 @@
         // 학생 정보 초기화
         await pageConfig.initStudent();
 
-        // 저장된 답안 불러오기
+        // 서버에서 저장된 답안 불러오기 (localStorage 사용 안함)
         const savedAnswers = pageConfig.loadUserAnswers(2);
         if (savedAnswers) {
-          console.log("🔄 페이지 2 저장된 답안 복원 중...");
+          console.log("🔄 페이지 2 서버에서 답안 복원 중...", savedAnswers);
 
           // savedAnswers가 배열 형태인 경우 (새로운 형식)
           if (Array.isArray(savedAnswers)) {
@@ -178,18 +178,12 @@
                   ? result.userAnswer.join(",")
                   : result.userAnswer;
                 input.style.backgroundColor = "#e3f2fd";
+                console.log(`📝 복원된 답안 ${index}: ${result.userAnswer}`);
               }
             });
-          } else {
-            // 기존 형식 지원
-            for (let id in savedAnswers) {
-              const input = document.getElementById(id);
-              if (input) {
-                input.value = savedAnswers[id];
-                input.style.backgroundColor = "#e3f2fd";
-              }
-            }
           }
+        } else {
+          console.log("📝 새로운 학습 시작 - 저장된 답안 없음");
         }
 
         // 입력 필드에 실시간 체크 기능 추가

@@ -156,6 +156,9 @@ const pageConfig = {
 
       if (!studentId) {
         console.log("❌ studentId가 없음, 등록 페이지로 리다이렉트");
+        // 기존 데이터 정리
+        this.clearStudentData();
+
         // 학생 정보가 없으면 등록 페이지로 리다이렉트
         if (
           window.location.pathname !== "/student-register.html" &&
@@ -177,6 +180,17 @@ const pageConfig = {
       console.log("🌐 서버 응답 데이터:", data);
 
       if (data.success) {
+        // 🔧 새로운 학생이면 이전 데이터 정리
+        const previousStudentId = this.currentStudent
+          ? this.currentStudent.id
+          : null;
+        if (previousStudentId && previousStudentId !== data.student.id) {
+          console.log(
+            `🔄 학생 변경 감지: ${previousStudentId} → ${data.student.id}`
+          );
+          this.clearStudentData();
+        }
+
         this.currentStudent = data.student;
         console.log("✅ 학생 정보 로드 성공!");
         console.log(
@@ -213,6 +227,10 @@ const pageConfig = {
             if (reregisterData.success) {
               // 새로운 학생 ID로 업데이트
               localStorage.setItem("studentId", reregisterData.student.id);
+
+              // 이전 데이터 정리
+              this.clearStudentData();
+
               this.currentStudent = reregisterData.student;
               console.log(
                 "✅ 재등록 성공! 새 학생 ID:",
@@ -226,6 +244,7 @@ const pageConfig = {
         }
 
         // 재등록도 실패하면 등록 페이지로
+        this.clearStudentData();
         localStorage.removeItem("studentId");
         localStorage.removeItem("studentInfo");
         if (
@@ -239,6 +258,10 @@ const pageConfig = {
     } catch (error) {
       console.error("❌ 학생 초기화 오류:", error);
       console.log("⚠️ 네트워크 오류 또는 서버 연결 실패");
+
+      // 오류시 데이터 정리
+      this.clearStudentData();
+
       // 오류시 등록 페이지로 리다이렉트
       if (
         window.location.pathname !== "/student-register.html" &&
@@ -527,20 +550,16 @@ const pageConfig = {
           console.log(`✅ 페이지 ${pageId} 답안 저장 완료`);
         }
       } else {
-        // localStorage에 저장
-        const key = `answers_page${pageId}`;
-        localStorage.setItem(key, JSON.stringify(answers));
-        console.log(`💾 localStorage에 답안 저장: ${key}`);
+        console.log("⚠️ 학생 정보 없음, localStorage 사용 안함");
+        // 학생 정보가 없으면 localStorage에 저장하지 않음
       }
     } catch (error) {
       console.error("❌ 답안 저장 오류:", error);
-      // 오류시 localStorage에 저장
-      const key = `answers_page${pageId}`;
-      localStorage.setItem(key, JSON.stringify(answers));
+      // 오류시에도 localStorage에 저장하지 않음 (학생별 분리를 위해)
     }
   },
 
-  // 사용자 답안 불러오기
+  // 사용자 답안 불러오기 (학생별 분리)
   loadUserAnswers: function (pageId) {
     try {
       if (this.currentStudent && this.currentStudent.scores) {
@@ -551,19 +570,9 @@ const pageConfig = {
         }
       }
 
-      // localStorage에서 불러오기
-      const key = `answers_page${pageId}`;
-      const stored = localStorage.getItem(key);
-      if (stored) {
-        const answers = JSON.parse(stored);
-        console.log(
-          `📂 localStorage에서 페이지 ${pageId} 답안 불러옴:`,
-          answers
-        );
-        return answers;
-      }
-
-      console.log(`📂 페이지 ${pageId} 저장된 답안 없음`);
+      console.log(
+        `📂 페이지 ${pageId} 저장된 답안 없음 (새 학생 또는 처음 접속)`
+      );
       return null;
     } catch (error) {
       console.error("❌ 답안 불러오기 오류:", error);
@@ -624,5 +633,29 @@ const pageConfig = {
       localStorage.getItem("completedPages")
     );
     console.log("🔍 === 디버깅 완료 ===");
+  },
+
+  // 학생 변경 시 localStorage 정리
+  clearStudentData: function () {
+    console.log("🧹 이전 학생 데이터 정리 중...");
+
+    // 답안 관련 localStorage 정리
+    const keysToRemove = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key.startsWith("answers_page")) {
+        keysToRemove.push(key);
+      }
+    }
+
+    keysToRemove.forEach((key) => {
+      localStorage.removeItem(key);
+      console.log(`🗑️ ${key} 삭제됨`);
+    });
+
+    // 기타 이전 데이터 정리
+    localStorage.removeItem("completedPages");
+
+    console.log("✅ 이전 학생 데이터 정리 완료");
   },
 };
