@@ -153,12 +153,33 @@
       // AI 피드백 요청 함수
       async function getAIFeedback(userAnswers, correctAnswers) {
         try {
-          const question =
-            "조를 알아보기: 1000억이 10개→?, 1조가 3745개+1억이 8670개+1만이 1593개+1이 4260개→?";
-          const correctAnswer = "정답: 1000000000000, 3745867015934260";
-          const studentAnswer = `학생답: ${Object.values(userAnswers).join(
-            ", "
-          )}`;
+          // 정답 여부 미리 계산
+          let correctCount = 0;
+          let totalQuestions = Object.keys(correctAnswers).length;
+
+          for (let id in correctAnswers) {
+            if (userAnswers[id] === correctAnswers[id]) {
+              correctCount++;
+            }
+          }
+
+          const isAllCorrect = correctCount === totalQuestions;
+
+          // AI에게 명확한 정보 제공
+          const question = `조를 알아보기 문제:
+문제 1: 1000억이 10개인 수는 → 학생답: ${userAnswers.jo1 || "(빈칸)"}
+문제 2: 1조가 3745개, 1억이 8670개, 1만이 1593개, 1이 4260개인 수는 → 학생답: ${
+            userAnswers.complex1 || "(빈칸)"
+          }`;
+
+          const correctAnswer = `정답:
+문제 1: 1000000000000 (1조)
+문제 2: 3745867015934260`;
+
+          // 정답 여부를 명확히 표시
+          const studentStatus = isAllCorrect
+            ? "학생이 모든 문제를 정답으로 맞혔습니다."
+            : `학생이 ${correctCount}/${totalQuestions} 문제를 맞혔습니다.`;
 
           document.getElementById("aiFeedbackSection").style.display = "block";
 
@@ -168,9 +189,11 @@
               "Content-Type": "application/json",
             },
             body: JSON.stringify({
-              question: question,
+              question: `${question}\n\n${studentStatus}`,
               correctAnswer: correctAnswer,
-              studentAnswer: studentAnswer,
+              studentAnswer: `학생의 현재 답안들: ${Object.values(
+                userAnswers
+              ).join(", ")}`,
             }),
           });
 

@@ -134,12 +134,35 @@
       // AI 피드백 요청 함수
       async function getAIFeedback(userAnswers, correctAnswers) {
         try {
-          const question =
-            "뛰어세기: 10만씩→150000-250000-?-?, 10억씩→910억-920억-?-940억-?";
-          const correctAnswer = "정답: 930억, 950억, 350000, 450000";
-          const studentAnswer = `학생답: ${Object.values(userAnswers).join(
-            ", "
-          )}`;
+          // 정답 여부 미리 계산
+          let correctCount = 0;
+          let totalQuestions = Object.keys(correctAnswers).length;
+
+          for (let id in correctAnswers) {
+            if (userAnswers[id] === correctAnswers[id]) {
+              correctCount++;
+            }
+          }
+
+          const isAllCorrect = correctCount === totalQuestions;
+
+          // AI에게 명확한 정보 제공
+          const question = `뛰어세기 문제:
+문제 1: 10만씩 뛰어 세기: 150000 - 250000 - ? - ? → 학생답: ${
+            userAnswers.skip3 || "(빈칸)"
+          }, ${userAnswers.skip4 || "(빈칸)"}
+문제 2: 10억씩 뛰어 세기: 910억 - 920억 - ? - 940억 - ? → 학생답: ${
+            userAnswers.skip1 || "(빈칸)"
+          }, ${userAnswers.skip2 || "(빈칸)"}`;
+
+          const correctAnswer = `정답:
+문제 1: 350000, 450000
+문제 2: 930억, 950억`;
+
+          // 정답 여부를 명확히 표시
+          const studentStatus = isAllCorrect
+            ? "학생이 모든 문제를 정답으로 맞혔습니다."
+            : `학생이 ${correctCount}/${totalQuestions} 문제를 맞혔습니다.`;
 
           document.getElementById("aiFeedbackSection").style.display = "block";
 
@@ -149,9 +172,11 @@
               "Content-Type": "application/json",
             },
             body: JSON.stringify({
-              question: question,
+              question: `${question}\n\n${studentStatus}`,
               correctAnswer: correctAnswer,
-              studentAnswer: studentAnswer,
+              studentAnswer: `학생의 현재 답안들: ${Object.values(
+                userAnswers
+              ).join(", ")}`,
             }),
           });
 
