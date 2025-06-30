@@ -48,9 +48,11 @@
               type="text"
               class="korean-input"
               id="korean2"
+              data-question="0"
               maxlength="20"
+              placeholder="숫자를 입력하세요"
             />
-            <span class="text">- 삼만구천오백이십삼</span>
+            <span class="text">← 삼만구천오백이십삼</span>
           </div>
 
           <div class="decomp-row">
@@ -60,13 +62,18 @@
               type="text"
               class="korean-input"
               id="korean3"
+              data-question="1"
               maxlength="30"
+              placeholder="한글로 입력하세요"
             />
           </div>
         </div>
 
         <div class="button-container">
-          <button id="checkAnswer" class="check-button">정답 확인</button>
+          <button id="checkAnswer" class="check-button">실시간 확인</button>
+          <button id="confirmAnswers" class="check-button" disabled>
+            ❌ 다시 확인해주세요
+          </button>
           <button id="resetAnswer" class="reset-button">다시 풀기</button>
         </div>
 
@@ -87,10 +94,7 @@
     <script src="config.js"></script>
     <script>
       // 페이지 2 전용 스크립트
-      const answers = {
-        korean2: "39523",
-        korean3: "오만육천팔백칠십일",
-      };
+      let currentPageId = 2;
 
       // AI 피드백 요청 함수
       async function getAIFeedback(userAnswers, correctAnswers) {
@@ -153,122 +157,100 @@
         }
       }
 
-      // 페이지 로드시 저장된 답안 복원
+      // 페이지 로드시 저장된 답안 복원 및 초기화
       document.addEventListener("DOMContentLoaded", async function () {
+        // 학생 정보 초기화
+        await pageConfig.initStudent();
+
         // 저장된 답안 불러오기
         const savedAnswers = pageConfig.loadUserAnswers(2);
         if (savedAnswers) {
           console.log("🔄 페이지 2 저장된 답안 복원 중...");
-          for (let id in savedAnswers) {
-            const input = document.getElementById(id);
-            if (input) {
-              input.value = savedAnswers[id];
-              input.style.backgroundColor = "#e3f2fd"; // 복원된 답안 표시
+
+          // savedAnswers가 배열 형태인 경우 (새로운 형식)
+          if (Array.isArray(savedAnswers)) {
+            savedAnswers.forEach((result, index) => {
+              const input = document.querySelector(
+                `[data-question="${index}"]`
+              );
+              if (input && result.userAnswer) {
+                input.value = Array.isArray(result.userAnswer)
+                  ? result.userAnswer.join(",")
+                  : result.userAnswer;
+                input.style.backgroundColor = "#e3f2fd";
+              }
+            });
+          } else {
+            // 기존 형식 지원
+            for (let id in savedAnswers) {
+              const input = document.getElementById(id);
+              if (input) {
+                input.value = savedAnswers[id];
+                input.style.backgroundColor = "#e3f2fd";
+              }
             }
           }
         }
 
-        // 입력 필드에 자동 저장 기능 추가
+        // 입력 필드에 실시간 체크 기능 추가
         const inputs = document.querySelectorAll(".korean-input");
         inputs.forEach((input) => {
-          input.addEventListener(
-            "input",
-            debounce(async function () {
-              await saveCurrentAnswers();
-            }, 1000)
-          ); // 1초 후 저장
+          input.addEventListener("input", function () {
+            // 실시간으로 답안 체크
+            setTimeout(() => {
+              pageConfig.checkAnswers(currentPageId);
+            }, 500);
+          });
         });
+
+        // 초기 답안 체크
+        pageConfig.checkAnswers(currentPageId);
       });
 
-      // 현재 답안 저장 함수
-      async function saveCurrentAnswers() {
-        const currentAnswers = {};
-        for (let id in answers) {
-          const input = document.getElementById(id);
-          if (input && input.value.trim()) {
-            currentAnswers[id] = input.value.trim();
-          }
-        }
-
-        if (Object.keys(currentAnswers).length > 0) {
-          await pageConfig.saveUserAnswers(2, currentAnswers);
-        }
-      }
-
-      // 디바운스 함수
-      function debounce(func, wait) {
-        let timeout;
-        return function executedFunction(...args) {
-          const later = () => {
-            clearTimeout(timeout);
-            func(...args);
-          };
-          clearTimeout(timeout);
-          timeout = setTimeout(later, wait);
-        };
-      }
-
+      // 실시간 확인 버튼
       document
         .getElementById("checkAnswer")
-        .addEventListener("click", async function () {
-          let allCorrect = true;
-          let correctCount = 0;
-          const totalQuestions = Object.keys(answers).length;
+        .addEventListener("click", function () {
+          pageConfig.checkAnswers(currentPageId);
 
-          for (let id in answers) {
-            const input = document.getElementById(id);
-            const userAnswer = input.value.trim();
-
-            if (userAnswer === answers[id]) {
-              input.style.backgroundColor = "#d4edda";
-              input.style.borderColor = "#28a745";
-              correctCount++;
-            } else {
-              input.style.backgroundColor = "#f8d7da";
-              input.style.borderColor = "#dc3545";
-              allCorrect = false;
-            }
-          }
-
-          const result = document.getElementById("result");
-          if (allCorrect) {
-            result.textContent = `완벽합니다! 🎉 모든 문제를 맞혔어요! 다음 단계로 진행할 수 있습니다!`;
-            result.className = "result-message correct";
-
-            // 최종 답안 저장
-            await saveCurrentAnswers();
-
-            // 페이지 완료 표시
-            await pageConfig.markPageCompleted(2);
-          } else {
-            result.textContent = `${correctCount}/${totalQuestions} 정답입니다. 다시 한번 생각해보세요!`;
-            result.className = "result-message partial";
-
-            // 부분 답안도 저장
-            await saveCurrentAnswers();
-          }
-
-          // 사용자 답안 수집 및 AI 피드백 요청
-          const userAnswers = {};
-          for (let id in answers) {
-            userAnswers[id] = document.getElementById(id).value.trim();
-          }
-
-          // AI 피드백 섹션 항상 표시
-          document.getElementById("aiFeedbackSection").style.display = "block";
-          getAIFeedback(userAnswers, answers);
+          // AI 피드백 요청
+          const userAnswers = {
+            korean2: document.getElementById("korean2").value.trim(),
+            korean3: document.getElementById("korean3").value.trim(),
+          };
+          const correctAnswers = {
+            korean2: "39523",
+            korean3: "오만육천팔백칠십일",
+          };
+          getAIFeedback(userAnswers, correctAnswers);
         });
 
+      // 확인 버튼 (모든 정답 맞혔을 때 활성화)
+      document
+        .getElementById("confirmAnswers")
+        .addEventListener("click", function () {
+          if (this.disabled) return;
+
+          // 다음 페이지로 이동
+          window.location.href = "page3.html";
+        });
+
+      // 다시 풀기 버튼
       document
         .getElementById("resetAnswer")
         .addEventListener("click", function () {
-          for (let id in answers) {
-            const input = document.getElementById(id);
+          const inputs = document.querySelectorAll(".korean-input");
+          inputs.forEach((input) => {
             input.value = "";
             input.style.backgroundColor = "";
             input.style.borderColor = "";
-          }
+          });
+
           document.getElementById("result").textContent = "";
+          document.getElementById("aiFeedbackSection").style.display = "none";
+
+          // 답안 체크 초기화
+          pageConfig.checkAnswers(currentPageId);
         });
     </script>
   </body>

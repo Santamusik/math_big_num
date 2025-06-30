@@ -397,10 +397,63 @@ app.get("/api/progress/:studentId", (req, res) => {
       student: student,
     });
   } catch (error) {
-    console.error("데이터 조회 오류:", error);
+    console.error("진도 조회 오류:", error);
     res.status(500).json({
       success: false,
-      error: "데이터 조회 중 오류가 발생했습니다.",
+      error: "진도 조회 중 오류가 발생했습니다.",
+    });
+  }
+});
+
+// 디버깅용 테스트 엔드포인트
+app.get("/api/progress/test", (req, res) => {
+  try {
+    const serverStatus = {
+      success: true,
+      message: "서버가 정상적으로 작동하고 있습니다.",
+      timestamp: new Date().toISOString(),
+      totalStudents: studentsData.size,
+      totalClasses: classCodes.size,
+      serverUptime: process.uptime(),
+      memoryUsage: process.memoryUsage(),
+    };
+
+    console.log("🔍 서버 상태 확인 요청:", serverStatus);
+    res.json(serverStatus);
+  } catch (error) {
+    console.error("서버 상태 확인 오류:", error);
+    res.status(500).json({
+      success: false,
+      error: "서버 상태 확인 중 오류가 발생했습니다.",
+    });
+  }
+});
+
+// 전체 학생 목록 조회 (관리용)
+app.get("/api/students", (req, res) => {
+  try {
+    const students = Array.from(studentsData.values()).map((student) => ({
+      id: student.id,
+      name: student.studentName,
+      school: student.schoolName,
+      grade: student.grade,
+      class: student.classNumber,
+      number: student.studentNumber,
+      completedPages: student.completedPages.length,
+      totalStudyTime: student.totalStudyTime,
+      lastAccess: student.lastAccess,
+    }));
+
+    res.json({
+      success: true,
+      students: students,
+      totalCount: students.length,
+    });
+  } catch (error) {
+    console.error("학생 목록 조회 오류:", error);
+    res.status(500).json({
+      success: false,
+      error: "학생 목록 조회 중 오류가 발생했습니다.",
     });
   }
 });

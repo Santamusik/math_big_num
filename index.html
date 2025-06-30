@@ -138,8 +138,16 @@
     <script>
       // 페이지 접근 제한 적용
       document.addEventListener('DOMContentLoaded', async function() {
+        console.log("🏠 메인 페이지 로드 시작...");
+        
+        // 디버깅 정보 출력
+        pageConfig.debugStatus();
+        
         // 학생 초기화
         const isStudentReady = await pageConfig.initStudent();
+        
+        console.log("🔍 학생 초기화 결과:", isStudentReady);
+        console.log("👤 현재 학생 정보:", pageConfig.currentStudent);
         
         if (isStudentReady && pageConfig.currentStudent) {
           // 학생 정보 표시
@@ -147,11 +155,17 @@
           const studentDetails = document.getElementById('studentDetails');
           const student = pageConfig.currentStudent;
           
+          console.log("✅ 학생 정보 표시:", student);
+          
           studentDetails.innerHTML = `
             👨‍🎓 <strong>${student.studentName}</strong> | 
             🏫 ${student.schoolName} ${student.grade}학년 ${student.classNumber}반 ${student.studentNumber}번
           `;
           studentInfo.style.display = 'block';
+          
+          // 완료된 단계 표시
+          const completedCount = student.completedPages ? student.completedPages.length : 0;
+          console.log(`📊 완료된 단계: ${completedCount}/7`);
           
           // 학생 변경 버튼 이벤트
           document.getElementById('changeStudentBtn').addEventListener('click', function() {
@@ -161,6 +175,34 @@
               window.location.href = 'student-register.html';
             }
           });
+        } else {
+          console.log("❌ 학생 정보 로드 실패");
+          
+          // localStorage 확인
+          const storedStudentId = localStorage.getItem('studentId');
+          const storedStudentInfo = localStorage.getItem('studentInfo');
+          
+          console.log("📱 저장된 studentId:", storedStudentId);
+          console.log("📱 저장된 studentInfo:", storedStudentInfo);
+          
+          if (storedStudentId && storedStudentInfo) {
+            console.log("🔄 localStorage 정보가 있지만 서버 로드 실패 - 재시도 중...");
+            
+            // 3초 후 재시도
+            setTimeout(async () => {
+              console.log("🔄 학생 정보 재로드 시도...");
+              const retryResult = await pageConfig.initStudent();
+              
+              if (retryResult && pageConfig.currentStudent) {
+                console.log("✅ 재시도 성공!");
+                window.location.reload(); // 페이지 새로고침
+              } else {
+                console.log("❌ 재시도도 실패 - 등록 페이지로 리다이렉트");
+                alert("학생 정보를 불러올 수 없습니다. 다시 등록해주세요.");
+                window.location.href = 'student-register.html';
+              }
+            }, 3000);
+          }
         }
         
         // 페이지 접근 권한 및 완료 상태 업데이트 함수
@@ -185,7 +227,8 @@
                 card.style.pointerEvents = 'none';
                 card.addEventListener('click', function(e) {
                   e.preventDefault();
-                  alert('모든 7단계를 완료해야 증명서를 받을 수 있습니다!');
+                  const completedCount = pageConfig.getCompletedPages().length;
+                  alert(`아직 학습이 완료되지 않았습니다.\n완료: ${completedCount}/7단계\n모든 7단계를 완료해야 증명서를 받을 수 있습니다!`);
                 });
               } else {
                 card.style.opacity = '1';
@@ -215,6 +258,7 @@
               checkMark.style.top = '10px';
               checkMark.style.right = '10px';
               checkMark.style.fontSize = '1.5em';
+              checkMark.style.zIndex = '10';
               card.style.position = 'relative';
               card.appendChild(checkMark);
             }
@@ -225,10 +269,50 @@
         updatePageStatus();
         
         // 페이지가 포커스를 받을 때마다 상태 업데이트 (다른 탭에서 돌아올 때)
-        window.addEventListener('focus', updatePageStatus);
+        window.addEventListener('focus', function() {
+          console.log("🔄 페이지 포커스 - 상태 업데이트");
+          updatePageStatus();
+        });
         
-        // 주기적으로 상태 업데이트 (5초마다)
-        setInterval(updatePageStatus, 5000);
+        // 주기적으로 상태 업데이트 (10초마다) 
+        setInterval(() => {
+          console.log("🔄 주기적 상태 업데이트");
+          updatePageStatus();
+        }, 10000);
+        
+        // 추가 디버깅 버튼 (개발용)
+        const debugButton = document.createElement('button');
+        debugButton.textContent = '🔍 디버깅 정보';
+        debugButton.style.position = 'fixed';
+        debugButton.style.bottom = '20px';
+        debugButton.style.right = '20px';
+        debugButton.style.zIndex = '1000';
+        debugButton.style.padding = '10px';
+        debugButton.style.backgroundColor = '#007bff';
+        debugButton.style.color = 'white';
+        debugButton.style.border = 'none';
+        debugButton.style.borderRadius = '5px';
+        debugButton.style.cursor = 'pointer';
+        
+        debugButton.addEventListener('click', function() {
+          console.log("🔍 === 수동 디버깅 정보 ===");
+          pageConfig.debugStatus();
+          console.log("🌐 서버 연결 테스트 시작...");
+          
+          // 서버 연결 테스트
+          fetch('/api/progress/test', {
+            method: 'GET',
+          }).then(response => {
+            console.log("🌐 서버 응답 상태:", response.status);
+            return response.json();
+          }).then(data => {
+            console.log("🌐 서버 응답:", data);
+          }).catch(error => {
+            console.error("❌ 서버 연결 오류:", error);
+          });
+        });
+        
+        document.body.appendChild(debugButton);
       });
     </script>
   </body>

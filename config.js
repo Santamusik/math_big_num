@@ -198,7 +198,44 @@ const pageConfig = {
         return true;
       } else {
         console.log("❌ 서버에서 학생을 찾을 수 없음:", data.error);
-        // 학생을 찾을 수 없으면 등록 페이지로
+
+        // 🔧 새로운 해결책: localStorage에 저장된 학생 정보로 서버에 재등록 시도
+        const storedStudentInfo = localStorage.getItem("studentInfo");
+        if (storedStudentInfo) {
+          try {
+            const studentInfo = JSON.parse(storedStudentInfo);
+            console.log(
+              "🔄 저장된 학생 정보로 서버에 재등록 시도:",
+              studentInfo
+            );
+
+            const reregisterResponse = await fetch("/api/student/register", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify(studentInfo),
+            });
+
+            const reregisterData = await reregisterResponse.json();
+            console.log("🔄 재등록 서버 응답:", reregisterData);
+
+            if (reregisterData.success) {
+              // 새로운 학생 ID로 업데이트
+              localStorage.setItem("studentId", reregisterData.student.id);
+              this.currentStudent = reregisterData.student;
+              console.log(
+                "✅ 재등록 성공! 새 학생 ID:",
+                reregisterData.student.id
+              );
+              return true;
+            }
+          } catch (reregisterError) {
+            console.error("❌ 재등록 실패:", reregisterError);
+          }
+        }
+
+        // 재등록도 실패하면 등록 페이지로
         localStorage.removeItem("studentId");
         localStorage.removeItem("studentInfo");
         if (
@@ -221,6 +258,137 @@ const pageConfig = {
       }
       return false;
     }
+  },
+
+  // 답안 체크 및 확인 버튼 상태 관리
+  checkAnswers: function (pageId) {
+    console.log(`🔍 페이지 ${pageId} 답안 체크 시작...`);
+
+    const currentPage = this.pages.find((page) => page.id === pageId);
+    if (!currentPage) {
+      console.error(`❌ 페이지 ${pageId}를 찾을 수 없음`);
+      return false;
+    }
+
+    const problems = currentPage.problems;
+    let allCorrect = true;
+    let results = [];
+
+    problems.forEach((problem, index) => {
+      let inputElements = [];
+      let isCorrect = false;
+      let userAnswer = "";
+
+      // 페이지별 특별한 input 구조 처리
+      if (pageId === 2) {
+        // page2의 특별한 ID 구조 (korean2, korean3)
+        if (index === 0) {
+          inputElements = [document.getElementById("korean2")];
+        } else if (index === 1) {
+          inputElements = [document.getElementById("korean3")];
+        }
+      } else {
+        // 일반적인 data-question 속성 사용
+        inputElements = document.querySelectorAll(`[data-question="${index}"]`);
+      }
+
+      if (inputElements.length > 0 && inputElements[0]) {
+        if (problem.type === "fill_blanks") {
+          // 빈칸 채우기 - 여러 입력값 체크
+          const userAnswers = Array.from(inputElements).map((input) =>
+            input.value.trim()
+          );
+          userAnswer = userAnswers;
+          isCorrect =
+            userAnswers.length === problem.answer.length &&
+            userAnswers.every((answer, i) => answer === problem.answer[i]);
+        } else if (problem.type === "multiple_choice") {
+          // 객관식 - 선택된 라디오 버튼 체크
+          const selectedInput = document.querySelector(
+            `input[name="q${index}"]:checked`
+          );
+          userAnswer = selectedInput ? selectedInput.value : "";
+          isCorrect = userAnswer === problem.answer;
+        } else {
+          // 단답형 - 단일 입력값 체크 (number_to_korean, decomposition 등)
+          userAnswer = inputElements[0].value.trim();
+
+          // 정답 타입에 따른 체크
+          if (typeof problem.answer === "string") {
+            isCorrect = userAnswer === problem.answer;
+          } else if (typeof problem.answer === "boolean") {
+            isCorrect =
+              userAnswer.toLowerCase() === "true" ||
+              userAnswer === "맞음" ||
+              userAnswer === "1";
+          }
+        }
+
+        // 시각적 피드백 제공
+        inputElements.forEach((input) => {
+          if (isCorrect) {
+            input.style.backgroundColor = "#d4edda";
+            input.style.borderColor = "#28a745";
+          } else {
+            input.style.backgroundColor = "#f8d7da";
+            input.style.borderColor = "#dc3545";
+          }
+        });
+      }
+
+      results.push({
+        question: problem.question,
+        userAnswer: userAnswer,
+        correctAnswer: problem.answer,
+        isCorrect: isCorrect,
+      });
+
+      if (!isCorrect) {
+        allCorrect = false;
+      }
+    });
+
+    console.log(`📊 답안 체크 결과:`, results);
+    console.log(`✅ 모든 정답 맞춤: ${allCorrect}`);
+
+    // 답안 저장
+    this.saveUserAnswers(pageId, results);
+
+    // 결과 메시지 표시
+    const resultElement = document.getElementById("result");
+    if (resultElement) {
+      const correctCount = results.filter((r) => r.isCorrect).length;
+      const totalCount = results.length;
+
+      if (allCorrect) {
+        resultElement.textContent = `🎉 완벽합니다! 모든 문제를 맞혔어요! (${correctCount}/${totalCount})`;
+        resultElement.className = "result-message correct";
+      } else {
+        resultElement.textContent = `${correctCount}/${totalCount} 정답입니다. 다시 한번 생각해보세요!`;
+        resultElement.className = "result-message partial";
+      }
+    }
+
+    // 확인 버튼 상태 업데이트
+    const confirmButton = document.getElementById("confirmAnswers");
+    if (confirmButton) {
+      if (allCorrect) {
+        confirmButton.disabled = false;
+        confirmButton.innerHTML = `✅ 모든 정답! 다음 단계로 →`;
+        confirmButton.classList.add("btn-success");
+        confirmButton.classList.remove("btn-secondary");
+
+        // 자동으로 페이지 완료 처리
+        this.markPageCompleted(pageId);
+      } else {
+        confirmButton.disabled = true;
+        confirmButton.innerHTML = `❌ 다시 확인해주세요`;
+        confirmButton.classList.add("btn-secondary");
+        confirmButton.classList.remove("btn-success");
+      }
+    }
+
+    return allCorrect;
   },
 
   // 페이지 완료 상태 관리
@@ -247,6 +415,12 @@ const pageConfig = {
           )}]`
         );
 
+        // 이미 완료된 페이지인지 확인
+        if (this.currentStudent.completedPages.includes(pageId)) {
+          console.log(`⚠️ 페이지 ${pageId}는 이미 완료됨`);
+          return;
+        }
+
         // 서버에 진도 저장
         const response = await fetch("/api/progress", {
           method: "POST",
@@ -271,6 +445,20 @@ const pageConfig = {
               ", "
             )}]`
           );
+
+          // 🏆 모든 페이지 완료 시 인증서 페이지로 이동
+          if (this.currentStudent.completedPages.length === 7) {
+            console.log("🎉 모든 페이지 완료! 인증서 발급 가능");
+            setTimeout(() => {
+              if (
+                confirm(
+                  "🎉 축하합니다! 모든 학습을 완료했습니다!\n\n학습 증명서를 받으시겠습니까?"
+                )
+              ) {
+                window.location.href = "certificate.html";
+              }
+            }, 1000);
+          }
         } else {
           console.error(`❌ 서버 저장 실패:`, data.error);
         }
