@@ -98,6 +98,50 @@
         comp2: "<",
       };
 
+      // 학생별 답안 저장
+      function saveAnswers() {
+        if (!pageConfig.currentStudent) return;
+
+        const studentId = pageConfig.currentStudent.id;
+        const currentAnswers = {};
+
+        for (let id in answers) {
+          const select = document.getElementById(id);
+          if (select && select.value) {
+            currentAnswers[id] = select.value;
+          }
+        }
+
+        localStorage.setItem(
+          `answers_page7_${studentId}`,
+          JSON.stringify(currentAnswers)
+        );
+        console.log(`💾 학생별 답안 저장: ${studentId}`, currentAnswers);
+      }
+
+      // 학생별 답안 불러오기
+      function loadAnswers() {
+        if (!pageConfig.currentStudent) return;
+
+        const studentId = pageConfig.currentStudent.id;
+        const saved = localStorage.getItem(`answers_page7_${studentId}`);
+
+        if (saved) {
+          const answers = JSON.parse(saved);
+          console.log(`📂 학생별 답안 복원: ${studentId}`, answers);
+
+          for (let id in answers) {
+            const select = document.getElementById(id);
+            if (select) {
+              select.value = answers[id];
+              select.style.backgroundColor = "#e3f2fd";
+            }
+          }
+        } else {
+          console.log(`📝 새로운 학습 시작: ${studentId}`);
+        }
+      }
+
       // AI 피드백 요청 함수
       async function getAIFeedback(userAnswers, correctAnswers) {
         try {
@@ -164,11 +208,18 @@
           if (allCorrect) {
             result.textContent = `완벽합니다! 🎉 모든 문제를 맞혔어요! 이제 증명서를 받으러 가세요!`;
             result.className = "result-message correct";
+
+            // 최종 답안 저장
+            saveAnswers();
+
             // 페이지 완료 표시
             await pageConfig.markPageCompleted(7);
           } else {
             result.textContent = `${correctCount}/${totalQuestions} 정답입니다. 다시 한번 생각해보세요!`;
             result.className = "result-message partial";
+
+            // 부분 답안도 저장
+            saveAnswers();
           }
 
           // 사용자 답안 수집 및 AI 피드백 요청
@@ -182,6 +233,24 @@
           getAIFeedback(userAnswers, answers);
         });
 
+      // 페이지 로드시 초기화
+      document.addEventListener("DOMContentLoaded", async function () {
+        // 학생 정보 초기화
+        await pageConfig.initStudent();
+
+        // 저장된 답안 복원
+        loadAnswers();
+
+        // 입력 필드에 자동 저장 기능 추가
+        const selects = document.querySelectorAll(".comparison-select");
+        selects.forEach((select) => {
+          select.addEventListener("change", function () {
+            // 즉시 저장
+            saveAnswers();
+          });
+        });
+      });
+
       document
         .getElementById("resetAnswer")
         .addEventListener("click", function () {
@@ -191,7 +260,16 @@
             select.style.backgroundColor = "";
             select.style.borderColor = "";
           }
+
           document.getElementById("result").textContent = "";
+          document.getElementById("aiFeedbackSection").style.display = "none";
+
+          // 저장된 답안도 삭제
+          if (pageConfig.currentStudent) {
+            const studentId = pageConfig.currentStudent.id;
+            localStorage.removeItem(`answers_page7_${studentId}`);
+            console.log(`🗑️ 학생별 답안 삭제: ${studentId}`);
+          }
         });
     </script>
   </body>
