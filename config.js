@@ -37,24 +37,14 @@ const pageConfig = {
       description: "46571 -> 4만 6천 5백 7십 1",
       problems: [
         {
-          question: "46571",
-          answer: "사만 육천오백칠십일",
-          type: "number_to_korean",
+          question: "삼만구천오백이십삼을 숫자로 바꾸기",
+          answer: "39523",
+          type: "number_conversion",
         },
         {
-          question: "46571 = 40000+6000+500+70+1",
-          answer: true,
-          type: "decomposition",
-        },
-        {
-          question: "93475",
-          answer: "구만 삼천사백칠십오",
-          type: "number_to_korean",
-        },
-        {
-          question: "56871",
-          answer: "오만 육천팔백칠십일",
-          type: "number_to_korean",
+          question: "56871을 한글로 바꾸기",
+          answer: "오만육천팔백칠십일",
+          type: "korean_conversion",
         },
       ],
     },
