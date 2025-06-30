@@ -158,10 +158,14 @@ const pageConfig = {
   // 학생 초기화 (페이지 로드시 호출)
   initStudent: async function () {
     try {
+      console.log("🚀 학생 초기화 시작...");
+
       // localStorage에서 학생 ID 확인
       let studentId = localStorage.getItem("studentId");
+      console.log("📱 localStorage에서 studentId 확인:", studentId);
 
       if (!studentId) {
+        console.log("❌ studentId가 없음, 등록 페이지로 리다이렉트");
         // 학생 정보가 없으면 등록 페이지로 리다이렉트
         if (
           window.location.pathname !== "/student-register.html" &&
@@ -173,21 +177,27 @@ const pageConfig = {
         return false;
       }
 
+      console.log(`🌐 서버에서 학생 정보 요청: /api/progress/${studentId}`);
       const response = await fetch(`/api/progress/${studentId}`, {
         method: "GET",
       });
 
+      console.log("🌐 서버 응답 상태:", response.status, response.statusText);
       const data = await response.json();
+      console.log("🌐 서버 응답 데이터:", data);
 
       if (data.success) {
         this.currentStudent = data.student;
+        console.log("✅ 학생 정보 로드 성공!");
         console.log(
-          "학생 로그인:",
+          "👤 학생 정보:",
           this.currentStudent.studentName,
           `${this.currentStudent.schoolName} ${this.currentStudent.grade}학년 ${this.currentStudent.classNumber}반 ${this.currentStudent.studentNumber}번`
         );
+        console.log("📊 완료된 페이지:", this.currentStudent.completedPages);
         return true;
       } else {
+        console.log("❌ 서버에서 학생을 찾을 수 없음:", data.error);
         // 학생을 찾을 수 없으면 등록 페이지로
         localStorage.removeItem("studentId");
         localStorage.removeItem("studentInfo");
@@ -200,7 +210,8 @@ const pageConfig = {
         return false;
       }
     } catch (error) {
-      console.error("학생 초기화 오류:", error);
+      console.error("❌ 학생 초기화 오류:", error);
+      console.log("⚠️ 네트워크 오류 또는 서버 연결 실패");
       // 오류시 등록 페이지로 리다이렉트
       if (
         window.location.pathname !== "/student-register.html" &&
@@ -416,5 +427,24 @@ const pageConfig = {
       return false;
     }
     return true;
+  },
+
+  // 디버깅용 함수 - 현재 상태 확인
+  debugStatus: function () {
+    console.log("🔍 === 현재 상태 디버깅 ===");
+    console.log(
+      "📱 localStorage studentId:",
+      localStorage.getItem("studentId")
+    );
+    console.log("👤 currentStudent:", this.currentStudent);
+    if (this.currentStudent) {
+      console.log("📊 완료된 페이지:", this.currentStudent.completedPages);
+      console.log("📈 점수 데이터:", this.currentStudent.scores);
+    }
+    console.log(
+      "💾 localStorage 완료 페이지:",
+      localStorage.getItem("completedPages")
+    );
+    console.log("🔍 === 디버깅 완료 ===");
   },
 };
