@@ -128,7 +128,7 @@
 
       document
         .getElementById("checkAnswer")
-        .addEventListener("click", function () {
+        .addEventListener("click", async function () {
           let allCorrect = true;
           let correctCount = 0;
           const totalQuestions = Object.keys(answers).length;
@@ -153,7 +153,7 @@
             result.textContent = `완벽합니다! 🎉 모든 문제를 맞혔어요! 다음 단계로 진행할 수 있습니다!`;
             result.className = "result-message correct";
             // 페이지 완료 표시
-            pageConfig.markPageCompleted(6);
+            await pageConfig.markPageCompleted(6);
           } else {
             result.textContent = `${correctCount}/${totalQuestions} 정답입니다! 다시 한번 생각해보세요!`;
             result.className = "result-message partial";
