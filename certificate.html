@@ -98,16 +98,6 @@
                 <p>완료 날짜: <span id="completionDate"></span></p>
                 <p>학생 ID: <span id="studentIdDisplay"></span></p>
               </div>
-
-              <!-- AI 피드백 섹션 -->
-              <div
-                class="ai-feedback-section"
-                id="aiFeedbackSection"
-                style="display: none"
-              >
-                <h3>🤖 AI 축하 메시지</h3>
-                <p id="aiFeedbackMessage">축하 메시지를 생성하고 있습니다...</p>
-              </div>
             </div>
 
             <div class="certificate-footer">
@@ -120,9 +110,6 @@
         <div class="certificate-actions">
           <button id="printCertificate" class="action-button">
             🖨️ 인쇄하기
-          </button>
-          <button id="downloadCertificate" class="action-button">
-            💾 이미지로 저장
           </button>
           <a href="index.html" class="action-button">🏠 홈으로 돌아가기</a>
         </div>
@@ -183,41 +170,6 @@
         console.log("✅ 학생 정보 표시 완료");
       }
 
-      // AI 축하 메시지 요청 함수
-      async function getAIFeedback() {
-        try {
-          document.getElementById("aiFeedbackSection").style.display = "block";
-
-          const response = await fetch("/chat", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              question: `학생 ${currentStudent.studentName}이 큰 수 학습 과정 7단계를 모두 완료했습니다. 축하 메시지를 작성해주세요.`,
-              correctAnswer: "7단계 모든 학습 완료",
-              studentAnswer: `${currentStudent.studentName} 학생이 모든 과정을 성공적으로 마쳤습니다.`,
-            }),
-          });
-
-          const data = await response.json();
-
-          if (data.success) {
-            document.getElementById("aiFeedbackMessage").textContent =
-              data.reply;
-          } else {
-            document.getElementById(
-              "aiFeedbackMessage"
-            ).textContent = `🎉 ${currentStudent.studentName}님, 큰 수 학습 과정을 완벽하게 완료하신 것을 축하드립니다! 이제 만, 십만, 백만, 천만, 억, 조까지 모든 큰 수를 자유자재로 다룰 수 있는 실력을 갖추셨네요! 정말 대단합니다! 👏`;
-          }
-        } catch (error) {
-          console.error("AI 피드백 오류:", error);
-          document.getElementById(
-            "aiFeedbackMessage"
-          ).textContent = `🎉 ${currentStudent.studentName}님, 모든 학습을 완료하신 것을 진심으로 축하드립니다! 큰 수에 대한 완벽한 이해를 보여주셨네요! 🌟`;
-        }
-      }
-
       // 증명서 생성 스크립트
       document
         .getElementById("generateCertificate")
@@ -259,9 +211,6 @@
           document.getElementById("nameInputSection").style.display = "none";
           document.getElementById("certificateDisplay").style.display = "block";
 
-          // AI 축하 메시지 요청
-          getAIFeedback();
-
           // 축하 효과
           setTimeout(() => {
             alert(
@@ -275,14 +224,6 @@
         .getElementById("printCertificate")
         .addEventListener("click", function () {
           window.print();
-        });
-
-      // 인쇄 기능
-      document
-        .getElementById("downloadCertificate")
-        .addEventListener("click", function () {
-          // 이미지로 저장 기능 구현
-          alert("이미지로 저장 기능은 아직 구현되지 않았습니다.");
         });
     </script>
   </body>

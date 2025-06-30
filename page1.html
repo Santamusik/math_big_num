@@ -164,7 +164,20 @@
       // AI 피드백 요청 함수
       async function getAIFeedback(userAnswers, correctAnswers) {
         try {
-          const question = `
+          // 정답 여부 미리 계산
+          let correctCount = 0;
+          let totalQuestions = Object.keys(correctAnswers).length;
+
+          for (let id in correctAnswers) {
+            if (userAnswers[id] === correctAnswers[id]) {
+              correctCount++;
+            }
+          }
+
+          const isAllCorrect = correctCount === totalQuestions;
+
+          // AI에게 명확한 정보 제공
+          const question = `만의 개념 알아보기 문제:
 문제 1: 9996 - 9997 - ${userAnswers.seq1_1 || "(빈칸)"} - ${
             userAnswers.seq1_2 || "(빈칸)"
           } - 10000
@@ -178,14 +191,16 @@
             userAnswers.seq4_2 || "(빈칸)"
           } - 10000`;
 
-          const correctAnswer = `
-정답:
+          const correctAnswer = `정답:
 문제 1: 9998, 9999 (1씩 증가)
 문제 2: 9970, 9980 (10씩 증가)
 문제 3: 9700, 9900 (100씩 증가)
 문제 4: 8000, 9000 (1000씩 증가)`;
 
-          const studentAnswer = question; // 이미 학생 답이 포함됨
+          // 정답 여부를 명확히 표시
+          const studentStatus = isAllCorrect
+            ? "학생이 모든 문제를 정답으로 맞혔습니다."
+            : `학생이 ${correctCount}/${totalQuestions} 문제를 맞혔습니다.`;
 
           // AI 피드백 섹션 표시
           document.getElementById("aiFeedbackSection").style.display = "block";
@@ -196,9 +211,11 @@
               "Content-Type": "application/json",
             },
             body: JSON.stringify({
-              question: question,
+              question: `${question}\n\n${studentStatus}`,
               correctAnswer: correctAnswer,
-              studentAnswer: studentAnswer,
+              studentAnswer: `학생의 현재 답안들: ${Object.values(
+                userAnswers
+              ).join(", ")}`,
             }),
           });
 
