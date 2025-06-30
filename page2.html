@@ -95,12 +95,31 @@
       // AI 피드백 요청 함수
       async function getAIFeedback(userAnswers, correctAnswers) {
         try {
-          const question =
-            "다섯 자리 수 알아보기: 1) 삼만구천오백이십삼을 숫자로 바꾸기, 2) 56871을 한글로 바꾸기";
+          // 정답 여부 미리 계산
+          let correctCount = 0;
+          let totalQuestions = Object.keys(correctAnswers).length;
+
+          for (let id in correctAnswers) {
+            if (userAnswers[id] === correctAnswers[id]) {
+              correctCount++;
+            }
+          }
+
+          const isAllCorrect = correctCount === totalQuestions;
+
+          // AI에게 명확한 정보 제공
+          const question = `다섯 자리 수 알아보기 문제:
+1) 삼만구천오백이십삼을 숫자로 바꾸기 → 학생답: ${
+            userAnswers.korean2 || "(빈칸)"
+          }
+2) 56871을 한글로 바꾸기 → 학생답: ${userAnswers.korean3 || "(빈칸)"}`;
+
           const correctAnswer = "정답: 1) 39523, 2) 오만육천팔백칠십일";
-          const studentAnswer = `학생답: ${Object.values(userAnswers).join(
-            ", "
-          )}`;
+
+          // 정답 여부를 명확히 표시
+          const studentStatus = isAllCorrect
+            ? "학생이 모든 문제를 정답으로 맞혔습니다."
+            : `학생이 ${correctCount}/${totalQuestions} 문제를 맞혔습니다.`;
 
           document.getElementById("aiFeedbackSection").style.display = "block";
 
@@ -110,9 +129,11 @@
               "Content-Type": "application/json",
             },
             body: JSON.stringify({
-              question: question,
+              question: `${question}\n\n${studentStatus}`,
               correctAnswer: correctAnswer,
-              studentAnswer: studentAnswer,
+              studentAnswer: `학생의 현재 답안들: ${Object.values(
+                userAnswers
+              ).join(", ")}`,
             }),
           });
 

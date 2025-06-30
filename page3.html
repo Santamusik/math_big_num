@@ -102,20 +102,35 @@
       // AI 피드백 요청 함수
       async function getAIFeedback(userAnswers, correctAnswers) {
         try {
-          const question = `
-문제 1: 1만이 10개 → 답: ${userAnswers.conv1 || "(빈칸)"}
-문제 2: 10만이 10개 → 답: ${userAnswers.conv2 || "(빈칸)"}  
-문제 3: 100만이 10개 → 답: ${userAnswers.conv3 || "(빈칸)"}
-문제 4: 10000이 86297개인 수는 → 답: ${userAnswers.calc1 || "(빈칸)"}`;
+          // 정답 여부 미리 계산
+          let correctCount = 0;
+          let totalQuestions = Object.keys(correctAnswers).length;
 
-          const correctAnswer = `
-정답:
-문제 1: 10만 (100000)
-문제 2: 100만 (1000000)
-문제 3: 1000만 (10000000)
+          for (let id in correctAnswers) {
+            if (userAnswers[id] === correctAnswers[id]) {
+              correctCount++;
+            }
+          }
+
+          const isAllCorrect = correctCount === totalQuestions;
+
+          // AI에게 명확한 정보 제공
+          const question = `십만, 백만, 천만 알아보기 문제:
+문제 1: 1만이 10개 → 학생답: ${userAnswers.conv1 || "(빈칸)"}
+문제 2: 10만이 10개 → 학생답: ${userAnswers.conv2 || "(빈칸)"}  
+문제 3: 100만이 10개 → 학생답: ${userAnswers.conv3 || "(빈칸)"}
+문제 4: 10000이 86297개인 수는 → 학생답: ${userAnswers.calc1 || "(빈칸)"}`;
+
+          const correctAnswer = `정답:
+문제 1: 100000 (십만)
+문제 2: 1000000 (백만)
+문제 3: 10000000 (천만)
 문제 4: 862970000`;
 
-          const studentAnswer = question; // 이미 학생 답이 포함됨
+          // 정답 여부를 명확히 표시
+          const studentStatus = isAllCorrect
+            ? "학생이 모든 문제를 정답으로 맞혔습니다."
+            : `학생이 ${correctCount}/${totalQuestions} 문제를 맞혔습니다.`;
 
           document.getElementById("aiFeedbackSection").style.display = "block";
 
@@ -125,9 +140,11 @@
               "Content-Type": "application/json",
             },
             body: JSON.stringify({
-              question: question,
+              question: `${question}\n\n${studentStatus}`,
               correctAnswer: correctAnswer,
-              studentAnswer: studentAnswer,
+              studentAnswer: `학생의 현재 답안들: ${Object.values(
+                userAnswers
+              ).join(", ")}`,
             }),
           });
 
