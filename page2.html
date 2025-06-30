@@ -132,6 +132,61 @@
         }
       }
 
+      // 페이지 로드시 저장된 답안 복원
+      document.addEventListener("DOMContentLoaded", async function () {
+        // 저장된 답안 불러오기
+        const savedAnswers = pageConfig.loadUserAnswers(2);
+        if (savedAnswers) {
+          console.log("🔄 페이지 2 저장된 답안 복원 중...");
+          for (let id in savedAnswers) {
+            const input = document.getElementById(id);
+            if (input) {
+              input.value = savedAnswers[id];
+              input.style.backgroundColor = "#e3f2fd"; // 복원된 답안 표시
+            }
+          }
+        }
+
+        // 입력 필드에 자동 저장 기능 추가
+        const inputs = document.querySelectorAll(".korean-input");
+        inputs.forEach((input) => {
+          input.addEventListener(
+            "input",
+            debounce(async function () {
+              await saveCurrentAnswers();
+            }, 1000)
+          ); // 1초 후 저장
+        });
+      });
+
+      // 현재 답안 저장 함수
+      async function saveCurrentAnswers() {
+        const currentAnswers = {};
+        for (let id in answers) {
+          const input = document.getElementById(id);
+          if (input && input.value.trim()) {
+            currentAnswers[id] = input.value.trim();
+          }
+        }
+
+        if (Object.keys(currentAnswers).length > 0) {
+          await pageConfig.saveUserAnswers(2, currentAnswers);
+        }
+      }
+
+      // 디바운스 함수
+      function debounce(func, wait) {
+        let timeout;
+        return function executedFunction(...args) {
+          const later = () => {
+            clearTimeout(timeout);
+            func(...args);
+          };
+          clearTimeout(timeout);
+          timeout = setTimeout(later, wait);
+        };
+      }
+
       document
         .getElementById("checkAnswer")
         .addEventListener("click", async function () {
@@ -158,11 +213,18 @@
           if (allCorrect) {
             result.textContent = `완벽합니다! 🎉 모든 문제를 맞혔어요! 다음 단계로 진행할 수 있습니다!`;
             result.className = "result-message correct";
+
+            // 최종 답안 저장
+            await saveCurrentAnswers();
+
             // 페이지 완료 표시
             await pageConfig.markPageCompleted(2);
           } else {
             result.textContent = `${correctCount}/${totalQuestions} 정답입니다. 다시 한번 생각해보세요!`;
             result.className = "result-message partial";
+
+            // 부분 답안도 저장
+            await saveCurrentAnswers();
           }
 
           // 사용자 답안 수집 및 AI 피드백 요청

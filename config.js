@@ -224,7 +224,18 @@ const pageConfig = {
 
   markPageCompleted: async function (pageId) {
     try {
+      console.log(`📝 페이지 ${pageId} 완료 처리 시작...`);
+
       if (this.currentStudent) {
+        console.log(
+          `👤 학생 정보: ${this.currentStudent.studentName} (ID: ${this.currentStudent.id})`
+        );
+        console.log(
+          `📊 현재 완료 페이지: [${this.currentStudent.completedPages.join(
+            ", "
+          )}]`
+        );
+
         // 서버에 진도 저장
         const response = await fetch("/api/progress", {
           method: "POST",
@@ -239,25 +250,39 @@ const pageConfig = {
         });
 
         const data = await response.json();
+        console.log(`🌐 서버 응답:`, data);
+
         if (data.success) {
           this.currentStudent = data.student;
-          console.log(`페이지 ${pageId} 완료 저장됨`);
+          console.log(`✅ 페이지 ${pageId} 완료 저장 성공!`);
+          console.log(
+            `📊 업데이트된 완료 페이지: [${this.currentStudent.completedPages.join(
+              ", "
+            )}]`
+          );
+        } else {
+          console.error(`❌ 서버 저장 실패:`, data.error);
         }
       } else {
+        console.log(`⚠️ 학생 정보 없음, localStorage 사용`);
         // fallback to localStorage
         const completed = this.getCompletedPages();
         if (!completed.includes(pageId)) {
           completed.push(pageId);
           localStorage.setItem("completedPages", JSON.stringify(completed));
+          console.log(`💾 localStorage에 저장: [${completed.join(", ")}]`);
         }
       }
     } catch (error) {
-      console.error("진도 저장 오류:", error);
+      console.error("❌ 진도 저장 오류:", error);
       // 오류시 localStorage에 저장
       const completed = this.getCompletedPages();
       if (!completed.includes(pageId)) {
         completed.push(pageId);
         localStorage.setItem("completedPages", JSON.stringify(completed));
+        console.log(
+          `💾 오류 발생, localStorage에 저장: [${completed.join(", ")}]`
+        );
       }
     }
   },
@@ -270,7 +295,91 @@ const pageConfig = {
 
   isCertificateAccessible: function () {
     const completed = this.getCompletedPages();
-    return completed.length >= 7; // 모든 7단계가 완료되어야 증명서 접근 가능
+    console.log(
+      `🏆 증명서 접근 체크: 완료된 페이지 [${completed.join(", ")}], 개수: ${
+        completed.length
+      }`
+    );
+
+    // 1부터 7까지 모든 페이지가 완료되었는지 확인
+    const requiredPages = [1, 2, 3, 4, 5, 6, 7];
+    const allCompleted = requiredPages.every((pageId) =>
+      completed.includes(pageId)
+    );
+
+    console.log(
+      `🏆 증명서 접근 가능: ${allCompleted} (필요: 7페이지, 완료: ${completed.length}페이지)`
+    );
+    return allCompleted;
+  },
+
+  // 사용자 답안 서버에 저장
+  saveUserAnswers: async function (pageId, answers) {
+    try {
+      if (this.currentStudent) {
+        console.log(`💾 페이지 ${pageId} 답안 저장 중...`, answers);
+
+        const response = await fetch("/api/progress", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            studentId: this.currentStudent.id,
+            pageId: pageId,
+            scores: answers, // 사용자 답안 저장
+            studyTime: 1,
+          }),
+        });
+
+        const data = await response.json();
+        if (data.success) {
+          this.currentStudent = data.student;
+          console.log(`✅ 페이지 ${pageId} 답안 저장 완료`);
+        }
+      } else {
+        // localStorage에 저장
+        const key = `answers_page${pageId}`;
+        localStorage.setItem(key, JSON.stringify(answers));
+        console.log(`💾 localStorage에 답안 저장: ${key}`);
+      }
+    } catch (error) {
+      console.error("❌ 답안 저장 오류:", error);
+      // 오류시 localStorage에 저장
+      const key = `answers_page${pageId}`;
+      localStorage.setItem(key, JSON.stringify(answers));
+    }
+  },
+
+  // 사용자 답안 불러오기
+  loadUserAnswers: function (pageId) {
+    try {
+      if (this.currentStudent && this.currentStudent.scores) {
+        const answers = this.currentStudent.scores[`page${pageId}`];
+        if (answers) {
+          console.log(`📂 서버에서 페이지 ${pageId} 답안 불러옴:`, answers);
+          return answers;
+        }
+      }
+
+      // localStorage에서 불러오기
+      const key = `answers_page${pageId}`;
+      const stored = localStorage.getItem(key);
+      if (stored) {
+        const answers = JSON.parse(stored);
+        console.log(
+          `📂 localStorage에서 페이지 ${pageId} 답안 불러옴:`,
+          answers
+        );
+        return answers;
+      }
+
+      console.log(`📂 페이지 ${pageId} 저장된 답안 없음`);
+      return null;
+    } catch (error) {
+      console.error("❌ 답안 불러오기 오류:", error);
+      return null;
+    }
   },
 
   // 현재 페이지 정보 가져오기
