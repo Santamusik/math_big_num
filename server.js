@@ -458,6 +458,75 @@ app.get("/api/students", (req, res) => {
   }
 });
 
+// 서버 데이터 초기화 (관리용)
+app.post("/api/admin/reset", (req, res) => {
+  try {
+    const { confirmPassword } = req.body;
+
+    // 간단한 비밀번호 확인 (실제 운영에서는 더 보안적인 방법 사용)
+    if (confirmPassword !== "reset2024") {
+      return res.status(403).json({
+        success: false,
+        error: "비밀번호가 틀렸습니다.",
+      });
+    }
+
+    // 모든 데이터 초기화
+    const beforeCount = studentsData.size;
+    studentsData.clear();
+    classCodes.clear();
+
+    console.log(`🗑️ 서버 데이터 초기화 완료. 삭제된 학생 수: ${beforeCount}`);
+
+    res.json({
+      success: true,
+      message: "서버 데이터가 초기화되었습니다.",
+      deletedStudents: beforeCount,
+      timestamp: new Date().toISOString(),
+    });
+  } catch (error) {
+    console.error("데이터 초기화 오류:", error);
+    res.status(500).json({
+      success: false,
+      error: "데이터 초기화 중 오류가 발생했습니다.",
+    });
+  }
+});
+
+// 특정 학생 삭제 (관리용)
+app.delete("/api/admin/student/:studentId", (req, res) => {
+  try {
+    const { studentId } = req.params;
+
+    if (studentsData.has(studentId)) {
+      const student = studentsData.get(studentId);
+      studentsData.delete(studentId);
+
+      console.log(`🗑️ 학생 삭제 완료: ${student.studentName} (${studentId})`);
+
+      res.json({
+        success: true,
+        message: "학생이 삭제되었습니다.",
+        deletedStudent: {
+          id: studentId,
+          name: student.studentName,
+        },
+      });
+    } else {
+      res.status(404).json({
+        success: false,
+        error: "학생을 찾을 수 없습니다.",
+      });
+    }
+  } catch (error) {
+    console.error("학생 삭제 오류:", error);
+    res.status(500).json({
+      success: false,
+      error: "학생 삭제 중 오류가 발생했습니다.",
+    });
+  }
+});
+
 // OpenAI 설정
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
