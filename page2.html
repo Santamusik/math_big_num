@@ -164,6 +164,8 @@
 
         // 서버에서 저장된 답안 불러오기 (localStorage 사용 안함)
         const savedAnswers = pageConfig.loadUserAnswers(2);
+        let hasRestoredAnswers = false;
+
         if (savedAnswers) {
           console.log("🔄 페이지 2 서버에서 답안 복원 중...", savedAnswers);
 
@@ -179,6 +181,7 @@
                   : result.userAnswer;
                 input.style.backgroundColor = "#e3f2fd";
                 console.log(`📝 복원된 답안 ${index}: ${result.userAnswer}`);
+                hasRestoredAnswers = true;
               }
             });
           }
@@ -197,8 +200,21 @@
           });
         });
 
-        // 초기 답안 체크
-        pageConfig.checkAnswers(currentPageId);
+        // 답안이 복원된 경우에만 초기 체크 실행
+        if (hasRestoredAnswers) {
+          console.log("🔍 복원된 답안에 대해 초기 체크 실행");
+          pageConfig.checkAnswers(currentPageId);
+        } else {
+          console.log("📝 빈 상태로 시작 - 초기 답안 체크 생략");
+          // 확인 버튼 초기 상태 설정
+          const confirmButton = document.getElementById("confirmAnswers");
+          if (confirmButton) {
+            confirmButton.disabled = true;
+            confirmButton.innerHTML = `❌ 답안을 입력해주세요`;
+            confirmButton.classList.add("btn-secondary");
+            confirmButton.classList.remove("btn-success");
+          }
+        }
       });
 
       // 실시간 확인 버튼

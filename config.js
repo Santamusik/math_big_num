@@ -372,8 +372,17 @@ const pageConfig = {
     if (resultElement) {
       const correctCount = results.filter((r) => r.isCorrect).length;
       const totalCount = results.length;
+      const emptyCount = results.filter(
+        (r) => !r.userAnswer || r.userAnswer === ""
+      ).length;
 
-      if (allCorrect) {
+      if (emptyCount > 0) {
+        // 빈 답안이 있는 경우
+        resultElement.textContent = `📝 답안을 모두 입력해주세요 (${
+          totalCount - emptyCount
+        }/${totalCount} 입력됨)`;
+        resultElement.className = "result-message partial";
+      } else if (allCorrect) {
         resultElement.textContent = `🎉 완벽합니다! 모든 문제를 맞혔어요! (${correctCount}/${totalCount})`;
         resultElement.className = "result-message correct";
       } else {
@@ -385,7 +394,17 @@ const pageConfig = {
     // 확인 버튼 상태 업데이트
     const confirmButton = document.getElementById("confirmAnswers");
     if (confirmButton) {
-      if (allCorrect) {
+      const emptyCount = results.filter(
+        (r) => !r.userAnswer || r.userAnswer === ""
+      ).length;
+
+      if (emptyCount > 0) {
+        // 빈 답안이 있는 경우
+        confirmButton.disabled = true;
+        confirmButton.innerHTML = `📝 답안을 모두 입력해주세요`;
+        confirmButton.classList.add("btn-secondary");
+        confirmButton.classList.remove("btn-success");
+      } else if (allCorrect) {
         confirmButton.disabled = false;
         confirmButton.innerHTML = `✅ 모든 정답! 다음 단계로 →`;
         confirmButton.classList.add("btn-success");
