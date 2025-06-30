@@ -146,23 +146,36 @@
 
           const isAllCorrect = correctCount === totalQuestions;
 
+          // 개별 답안 상태 확인
+          const skip3Status =
+            userAnswers.skip3 === correctAnswers.skip3 ? "✅정답" : "❌오답";
+          const skip4Status =
+            userAnswers.skip4 === correctAnswers.skip4 ? "✅정답" : "❌오답";
+          const skip1Status =
+            userAnswers.skip1 === correctAnswers.skip1 ? "✅정답" : "❌오답";
+          const skip2Status =
+            userAnswers.skip2 === correctAnswers.skip2 ? "✅정답" : "❌오답";
+
           // AI에게 명확한 정보 제공
-          const question = `뛰어세기 문제:
-문제 1: 10만씩 뛰어 세기: 150000 - 250000 - ? - ? → 학생답: ${
-            userAnswers.skip3 || "(빈칸)"
-          }, ${userAnswers.skip4 || "(빈칸)"}
-문제 2: 10억씩 뛰어 세기: 910억 - 920억 - ? - 940억 - ? → 학생답: ${
-            userAnswers.skip1 || "(빈칸)"
-          }, ${userAnswers.skip2 || "(빈칸)"}`;
+          const question = `뛰어세기 문제 (4개 빈칸):
+10만씩 뛰어세기: 150000 - 250000 - [${userAnswers.skip3 || "빈칸"}] - [${
+            userAnswers.skip4 || "빈칸"
+          }]
+  → 첫 번째 빈칸: ${skip3Status}, 두 번째 빈칸: ${skip4Status}
+
+10억씩 뛰어세기: 910억 - 920억 - [${userAnswers.skip1 || "빈칸"}] - 940억 - [${
+            userAnswers.skip2 || "빈칸"
+          }]
+  → 첫 번째 빈칸: ${skip1Status}, 두 번째 빈칸: ${skip2Status}`;
 
           const correctAnswer = `정답:
-문제 1: 350000, 450000
-문제 2: 930억, 950억`;
+10만씩 뛰어세기: 350000, 450000
+10억씩 뛰어세기: 930억, 950억`;
 
           // 정답 여부를 명확히 표시
           const studentStatus = isAllCorrect
-            ? "학생이 모든 문제를 정답으로 맞혔습니다."
-            : `학생이 ${correctCount}/${totalQuestions} 문제를 맞혔습니다.`;
+            ? "학생이 4개 빈칸을 모두 정답으로 맞혔습니다."
+            : `학생이 ${correctCount}/4개 빈칸을 맞혔습니다.`;
 
           document.getElementById("aiFeedbackSection").style.display = "block";
 
@@ -174,9 +187,7 @@
             body: JSON.stringify({
               question: `${question}\n\n${studentStatus}`,
               correctAnswer: correctAnswer,
-              studentAnswer: `학생의 현재 답안들: ${Object.values(
-                userAnswers
-              ).join(", ")}`,
+              studentAnswer: `학생의 현재 답안들: skip3=${userAnswers.skip3}, skip4=${userAnswers.skip4}, skip1=${userAnswers.skip1}, skip2=${userAnswers.skip2}`,
             }),
           });
 

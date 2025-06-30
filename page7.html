@@ -157,10 +157,20 @@
 
           const isAllCorrect = correctCount === totalQuestions;
 
+          // 개별 답안 상태 확인
+          const comp1Status =
+            userAnswers.comp1 === correctAnswers.comp1 ? "✅정답" : "❌오답";
+          const comp2Status =
+            userAnswers.comp2 === correctAnswers.comp2 ? "✅정답" : "❌오답";
+
           // AI에게 명확한 정보 제공
           const question = `수의 크기 비교하기 문제:
-문제 1: 1632만 ? 971만 → 학생답: ${userAnswers.comp1 || "(선택안함)"}
-문제 2: 4670000000 ? 4770000000 → 학생답: ${userAnswers.comp2 || "(선택안함)"}`;
+문제 1: 1632만 ? 971만 → 학생답: [${
+            userAnswers.comp1 || "선택안함"
+          }] ${comp1Status}
+문제 2: 4670000000 ? 4770000000 → 학생답: [${
+            userAnswers.comp2 || "선택안함"
+          }] ${comp2Status}`;
 
           const correctAnswer = `정답:
 문제 1: > (1632만이 971만보다 크다)
@@ -181,9 +191,7 @@
             body: JSON.stringify({
               question: `${question}\n\n${studentStatus}`,
               correctAnswer: correctAnswer,
-              studentAnswer: `학생의 현재 답안들: ${Object.values(
-                userAnswers
-              ).join(", ")}`,
+              studentAnswer: `학생의 현재 답안들: comp1=${userAnswers.comp1}, comp2=${userAnswers.comp2}`,
             }),
           });
 

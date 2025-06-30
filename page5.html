@@ -165,12 +165,22 @@
 
           const isAllCorrect = correctCount === totalQuestions;
 
+          // 개별 답안 상태 확인
+          const jo1Status =
+            userAnswers.jo1 === correctAnswers.jo1 ? "✅정답" : "❌오답";
+          const complex1Status =
+            userAnswers.complex1 === correctAnswers.complex1
+              ? "✅정답"
+              : "❌오답";
+
           // AI에게 명확한 정보 제공
           const question = `조를 알아보기 문제:
-문제 1: 1000억이 10개인 수는 → 학생답: ${userAnswers.jo1 || "(빈칸)"}
-문제 2: 1조가 3745개, 1억이 8670개, 1만이 1593개, 1이 4260개인 수는 → 학생답: ${
-            userAnswers.complex1 || "(빈칸)"
-          }`;
+문제 1: 1000억이 10개인 수는 → 학생답: [${
+            userAnswers.jo1 || "빈칸"
+          }] ${jo1Status}
+문제 2: 1조가 3745개, 1억이 8670개, 1만이 1593개, 1이 4260개인 수는 → 학생답: [${
+            userAnswers.complex1 || "빈칸"
+          }] ${complex1Status}`;
 
           const correctAnswer = `정답:
 문제 1: 1000000000000 (1조)
@@ -191,9 +201,7 @@
             body: JSON.stringify({
               question: `${question}\n\n${studentStatus}`,
               correctAnswer: correctAnswer,
-              studentAnswer: `학생의 현재 답안들: ${Object.values(
-                userAnswers
-              ).join(", ")}`,
+              studentAnswer: `학생의 현재 답안들: jo1=${userAnswers.jo1}, complex1=${userAnswers.complex1}`,
             }),
           });
 

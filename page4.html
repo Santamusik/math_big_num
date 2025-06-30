@@ -160,12 +160,20 @@
 
           const isAllCorrect = correctCount === totalQuestions;
 
+          // 개별 답안 상태 확인
+          const eok1Status =
+            userAnswers.eok1 === correctAnswers.eok1 ? "✅정답" : "❌오답";
+          const place1Status =
+            userAnswers.place1 === correctAnswers.place1 ? "✅정답" : "❌오답";
+
           // AI에게 명확한 정보 제공
           const question = `억을 알아보기 문제:
-문제 1: 1000만이 10개인 수는 → 학생답: ${userAnswers.eok1 || "(빈칸)"}
-문제 2: 1억이 8670개, 1만이 1593개, 1이 4260개인 수는 → 학생답: ${
-            userAnswers.place1 || "(빈칸)"
-          }`;
+문제 1: 1000만이 10개인 수는 → 학생답: [${
+            userAnswers.eok1 || "빈칸"
+          }] ${eok1Status}
+문제 2: 1억이 8670개, 1만이 1593개, 1이 4260개인 수는 → 학생답: [${
+            userAnswers.place1 || "빈칸"
+          }] ${place1Status}`;
 
           const correctAnswer = `정답:
 문제 1: 100000000 (1억)
@@ -186,9 +194,7 @@
             body: JSON.stringify({
               question: `${question}\n\n${studentStatus}`,
               correctAnswer: correctAnswer,
-              studentAnswer: `학생의 현재 답안들: ${Object.values(
-                userAnswers
-              ).join(", ")}`,
+              studentAnswer: `학생의 현재 답안들: eok1=${userAnswers.eok1}, place1=${userAnswers.place1}`,
             }),
           });
 
