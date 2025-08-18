@@ -7,11 +7,12 @@ require("dotenv").config({ path: "key.env" });
 const app = express();
 // Railway 등 PaaS 환경에서는 PORT 환경변수를 사용해야 라우팅이 정상 동작합니다
 const port = process.env.PORT || 3000;
+const host = process.env.HOST || "0.0.0.0";
 
-// CORS 설정
+// CORS 설정 - Railway 환경을 위한 더 관대한 설정
 app.use(
   cors({
-    origin: ["http://localhost:8080", "http://127.0.0.1:8080", "file://"],
+    origin: true, // 모든 origin 허용 (Railway 프록시 포함)
     credentials: true,
   })
 );
@@ -36,8 +37,20 @@ app.use((req, res, next) => {
 app.use(express.static(path.join(__dirname)));
 
 // 헬스체크 엔드포인트 (배포 플랫폼의 상태 확인용)
-app.get("/healthz", (_req, res) => {
+app.get("/healthz", (req, res) => {
+  res.set('Content-Type', 'text/plain');
   res.status(200).send("ok");
+});
+
+// Railway가 자주 사용하는 헬스체크 경로들
+app.get("/health", (req, res) => {
+  res.set('Content-Type', 'text/plain');
+  res.status(200).send("healthy");
+});
+
+app.get("/ping", (req, res) => {
+  res.set('Content-Type', 'text/plain');
+  res.status(200).send("pong");
 });
 
 // 루트 요청은 명시적으로 index.html 반환 (정적 서빙 보강)
@@ -767,8 +780,12 @@ app.post("/chat", async (req, res) => {
   }
 });
 
-app.listen(port, "0.0.0.0", () => {
-  console.log(`서버가 포트 ${port}에서 실행 중입니다.`);
+app.listen(port, host, () => {
+  console.log(`서버가 ${host}:${port}에서 실행 중입니다.`);
   console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`Healthcheck: http://0.0.0.0:${port}/healthz`);
+  console.log(`Railway PORT: ${process.env.PORT}`);
+  console.log(`Healthcheck endpoints:`);
+  console.log(`  - http://${host}:${port}/healthz`);
+  console.log(`  - http://${host}:${port}/health`);
+  console.log(`  - http://${host}:${port}/ping`);
 });
