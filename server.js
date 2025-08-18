@@ -767,6 +767,8 @@ app.post("/chat", async (req, res) => {
   }
 });
 
-app.listen(port, () => {
+app.listen(port, "0.0.0.0", () => {
   console.log(`서버가 포트 ${port}에서 실행 중입니다.`);
+  console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`Healthcheck: http://0.0.0.0:${port}/healthz`);
 });
