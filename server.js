@@ -6,9 +6,9 @@ require("dotenv").config({ path: "key.env" });
 
 const app = express();
 
-// Railway V2 호환성을 위한 포트/호스트 설정
+// Railway V2 호환성을 위한 포트/호스트 설정 (강제 0.0.0.0)
 const port = parseInt(process.env.PORT) || 3000;
-const host = process.env.RAILWAY_STATIC_URL ? "0.0.0.0" : "localhost";
+const host = "0.0.0.0"; // Railway는 반드시 0.0.0.0에 바인딩해야 함
 
 console.log(`🚀 Starting server...`);
 console.log(`📍 Environment: ${process.env.NODE_ENV || 'development'}`);
@@ -42,32 +42,24 @@ app.use((req, res, next) => {
 // 실행 디렉터리 변화에 영향을 받지 않도록 절대경로 기반으로 서빙
 app.use(express.static(path.join(__dirname)));
 
-// Railway V2 호환 헬스체크 (더 강력한 응답)
+// Railway V2 호환 헬스체크 (즉시 응답)
 app.get("/healthz", (req, res) => {
-  console.log(`🏥 Health check requested from ${req.ip}`);
-  res.writeHead(200, {
-    'Content-Type': 'text/plain',
-    'Cache-Control': 'no-cache',
-    'Connection': 'close'
-  });
-  res.end("OK");
+  console.log(`🏥 Health check requested from ${req.ip || req.connection.remoteAddress}`);
+  res.status(200).type('text/plain').send("OK");
 });
 
 app.get("/health", (req, res) => {
-  res.writeHead(200, {
-    'Content-Type': 'application/json',
-    'Cache-Control': 'no-cache'
-  });
-  res.end(JSON.stringify({
+  res.status(200).json({
     status: "healthy",
     timestamp: new Date().toISOString(),
-    uptime: process.uptime()
-  }));
+    uptime: process.uptime(),
+    port: port,
+    host: host
+  });
 });
 
 app.get("/ping", (req, res) => {
-  res.writeHead(200, { 'Content-Type': 'text/plain' });
-  res.end("pong");
+  res.status(200).type('text/plain').send("pong");
 });
 
 // 루트 요청은 명시적으로 index.html 반환 (정적 서빙 보강)
@@ -797,12 +789,18 @@ app.post("/chat", async (req, res) => {
   }
 });
 
-// Railway V2 호환 서버 시작
-const server = app.listen(port, host, () => {
-  console.log(`✅ 서버가 ${host}:${port}에서 실행 중입니다.`);
+// Railway V2 호환 서버 시작 (즉시 바인딩)
+const server = app.listen(port, () => {
+  const address = server.address();
+  console.log(`✅ 서버가 ${address.address}:${address.port}에서 실행 중입니다.`);
   console.log(`🌍 Railway 환경: ${process.env.RAILWAY_ENVIRONMENT || 'local'}`);
   console.log(`🔗 Public URL: ${process.env.RAILWAY_STATIC_URL || 'localhost'}`);
   console.log(`🏥 Health endpoints: /healthz, /health, /ping`);
+  
+  // Railway에 즉시 준비 완료 신호
+  if (process.send) {
+    process.send('ready');
+  }
 });
 
 // Railway의 graceful shutdown 지원

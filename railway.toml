@@ -8,4 +8,4 @@ healthcheckTimeout = 300
 restartPolicyType = "on_failure"
 
 [environments.production]
-variables = { NODE_ENV = "production" }
+variables = { NODE_ENV = "production", HOST = "0.0.0.0" }
