@@ -5,9 +5,15 @@ const path = require("path");
 require("dotenv").config({ path: "key.env" });
 
 const app = express();
-// Railway 등 PaaS 환경에서는 PORT 환경변수를 사용해야 라우팅이 정상 동작합니다
-const port = process.env.PORT || 3000;
-const host = process.env.HOST || "0.0.0.0";
+
+// Railway V2 호환성을 위한 포트/호스트 설정
+const port = parseInt(process.env.PORT) || 3000;
+const host = process.env.RAILWAY_STATIC_URL ? "0.0.0.0" : "localhost";
+
+console.log(`🚀 Starting server...`);
+console.log(`📍 Environment: ${process.env.NODE_ENV || 'development'}`);
+console.log(`🌐 Railway Static URL: ${process.env.RAILWAY_STATIC_URL || 'not set'}`);
+console.log(`🔧 Host: ${host}, Port: ${port}`);
 
 // CORS 설정 - Railway 환경을 위한 더 관대한 설정
 app.use(
@@ -36,21 +42,32 @@ app.use((req, res, next) => {
 // 실행 디렉터리 변화에 영향을 받지 않도록 절대경로 기반으로 서빙
 app.use(express.static(path.join(__dirname)));
 
-// 헬스체크 엔드포인트 (배포 플랫폼의 상태 확인용)
+// Railway V2 호환 헬스체크 (더 강력한 응답)
 app.get("/healthz", (req, res) => {
-  res.set('Content-Type', 'text/plain');
-  res.status(200).send("ok");
+  console.log(`🏥 Health check requested from ${req.ip}`);
+  res.writeHead(200, {
+    'Content-Type': 'text/plain',
+    'Cache-Control': 'no-cache',
+    'Connection': 'close'
+  });
+  res.end("OK");
 });
 
-// Railway가 자주 사용하는 헬스체크 경로들
 app.get("/health", (req, res) => {
-  res.set('Content-Type', 'text/plain');
-  res.status(200).send("healthy");
+  res.writeHead(200, {
+    'Content-Type': 'application/json',
+    'Cache-Control': 'no-cache'
+  });
+  res.end(JSON.stringify({
+    status: "healthy",
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime()
+  }));
 });
 
 app.get("/ping", (req, res) => {
-  res.set('Content-Type', 'text/plain');
-  res.status(200).send("pong");
+  res.writeHead(200, { 'Content-Type': 'text/plain' });
+  res.end("pong");
 });
 
 // 루트 요청은 명시적으로 index.html 반환 (정적 서빙 보강)
@@ -780,12 +797,27 @@ app.post("/chat", async (req, res) => {
   }
 });
 
-app.listen(port, host, () => {
-  console.log(`서버가 ${host}:${port}에서 실행 중입니다.`);
-  console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`Railway PORT: ${process.env.PORT}`);
-  console.log(`Healthcheck endpoints:`);
-  console.log(`  - http://${host}:${port}/healthz`);
-  console.log(`  - http://${host}:${port}/health`);
-  console.log(`  - http://${host}:${port}/ping`);
+// Railway V2 호환 서버 시작
+const server = app.listen(port, host, () => {
+  console.log(`✅ 서버가 ${host}:${port}에서 실행 중입니다.`);
+  console.log(`🌍 Railway 환경: ${process.env.RAILWAY_ENVIRONMENT || 'local'}`);
+  console.log(`🔗 Public URL: ${process.env.RAILWAY_STATIC_URL || 'localhost'}`);
+  console.log(`🏥 Health endpoints: /healthz, /health, /ping`);
+});
+
+// Railway의 graceful shutdown 지원
+process.on('SIGTERM', () => {
+  console.log('🛑 SIGTERM 수신, graceful shutdown 시작...');
+  server.close(() => {
+    console.log('✅ 서버 종료 완료');
+    process.exit(0);
+  });
+});
+
+process.on('SIGINT', () => {
+  console.log('🛑 SIGINT 수신, graceful shutdown 시작...');
+  server.close(() => {
+    console.log('✅ 서버 종료 완료');
+    process.exit(0);
+  });
 });
