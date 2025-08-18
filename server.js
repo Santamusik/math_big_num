@@ -1,10 +1,12 @@
 const express = require("express");
 const cors = require("cors");
 const OpenAI = require("openai");
+const path = require("path");
 require("dotenv").config({ path: "key.env" });
 
 const app = express();
-const port = 3000;
+// Railway 등 PaaS 환경에서는 PORT 환경변수를 사용해야 라우팅이 정상 동작합니다
+const port = process.env.PORT || 3000;
 
 // CORS 설정
 app.use(
@@ -30,7 +32,18 @@ app.use((req, res, next) => {
 });
 
 // 정적 파일 서빙 (HTML, CSS, JS 파일들)
-app.use(express.static("."));
+// 실행 디렉터리 변화에 영향을 받지 않도록 절대경로 기반으로 서빙
+app.use(express.static(path.join(__dirname)));
+
+// 헬스체크 엔드포인트 (배포 플랫폼의 상태 확인용)
+app.get("/healthz", (_req, res) => {
+  res.status(200).send("ok");
+});
+
+// 루트 요청은 명시적으로 index.html 반환 (정적 서빙 보강)
+app.get("/", (_req, res) => {
+  res.sendFile(path.join(__dirname, "index.html"));
+});
 
 // 학습 데이터 저장소 (메모리 기반 - 나중에 DB로 업그레이드 가능)
 const studentsData = new Map();
@@ -755,5 +768,5 @@ app.post("/chat", async (req, res) => {
 });
 
 app.listen(port, () => {
-  console.log(`서버가 http://localhost:${port}에서 실행 중입니다.`);
+  console.log(`서버가 포트 ${port}에서 실행 중입니다.`);
 });
