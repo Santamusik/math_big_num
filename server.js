@@ -346,6 +346,46 @@ function listAllSchoolNames() {
   return names;
 }
 
+// 최적화된 학교 검색을 위한 함수 (schools_processed.json 활용)
+function searchSchoolsOptimized(query) {
+  const map = loadSchoolsMap();
+  const results = [];
+  
+  if (!query || query.length < 1) return results;
+  
+  const searchTerm = query.toLowerCase();
+  
+  map.forEach((region) => {
+    region.schools.forEach((school) => {
+      if (school.school_name.toLowerCase().includes(searchTerm)) {
+        results.push({
+          school_name: school.school_name,
+          school_code: school.school_code,
+          region_name: region.region_name,
+          region_code: region.region_code
+        });
+      }
+    });
+  });
+  
+  // 정확히 일치하는 것을 먼저, 그 다음 포함하는 것 순으로 정렬
+  results.sort((a, b) => {
+    const aExact = a.school_name.toLowerCase() === searchTerm;
+    const bExact = b.school_name.toLowerCase() === searchTerm;
+    const aStarts = a.school_name.toLowerCase().startsWith(searchTerm);
+    const bStarts = b.school_name.toLowerCase().startsWith(searchTerm);
+    
+    if (aExact && !bExact) return -1;
+    if (!aExact && bExact) return 1;
+    if (aStarts && !bStarts) return -1;
+    if (!aStarts && bStarts) return 1;
+    
+    return a.school_name.localeCompare(b.school_name, "ko");
+  });
+  
+  return results.slice(0, 20); // 최대 20개 결과
+}
+
 // [추가 기능] 가공된 지역/학교 맵 공개 API (학생 등록용)
 app.get("/api/schools-map", (req, res) => {
   try {
@@ -356,32 +396,36 @@ app.get("/api/schools-map", (req, res) => {
   }
 });
 
-// [추가 기능] 학교명 간단 검색 (인증 필요)
+// [개선된 기능] 학교명 최적화 검색 (인증 필요)
 app.get("/api/admin/schools", (req, res) => {
   const authCheck = requireAdminAuth(req, res);
   if (authCheck) return;
   try {
     const q = (req.query.q || "").toString().trim();
     if (!q) return res.json({ success: true, schools: [] });
-    const list = listAllSchoolNames()
-      .filter((n) => n.includes(q))
-      .slice(0, 20);
-    res.json({ success: true, schools: list });
+    
+    const results = searchSchoolsOptimized(q);
+    const schoolNames = results.map(r => r.school_name);
+    
+    res.json({ success: true, schools: schoolNames });
   } catch (e) {
+    console.error("학교 검색 오류:", e);
     res.status(500).json({ success: false, error: "검색 오류" });
   }
 });
 
-// [추가 기능] 공개 학교 검색 (학생 등록용, 인증 불필요)
+// [개선된 기능] 공개 학교 최적화 검색 (학생 등록용, 인증 불필요)
 app.get("/api/schools", (req, res) => {
   try {
     const q = (req.query.q || "").toString().trim();
     if (!q) return res.json({ success: true, schools: [] });
-    const list = listAllSchoolNames()
-      .filter((n) => n.includes(q))
-      .slice(0, 20);
-    res.json({ success: true, schools: list });
+    
+    const results = searchSchoolsOptimized(q);
+    const schoolNames = results.map(r => r.school_name);
+    
+    res.json({ success: true, schools: schoolNames });
   } catch (e) {
+    console.error("공개 학교 검색 오류:", e);
     res.status(500).json({ success: false, error: "검색 오류" });
   }
 });
