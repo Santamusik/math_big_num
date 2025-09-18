@@ -121,9 +121,9 @@
         </div>
 
         <form class="register-form" id="registerForm">
-          <div class="form-group">
+          <div class="form-group" style="display: none;">
             <label for="regionSelect">지역</label>
-            <select id="regionSelect" aria-label="지역 선택" required>
+            <select id="regionSelect" aria-label="지역 선택">
               <option value="">선택</option>
             </select>
           </div>
@@ -274,7 +274,7 @@
       const schoolDropdown = document.getElementById("schoolDropdown");
       const schoolCodeInput = document.getElementById("schoolCode");
       const registerBtn = document.getElementById("registerBtn");
-      
+
       let searchTimeout = null;
       let selectedIndex = -1;
 
@@ -307,11 +307,12 @@
           const r = await fetch(`/api/schools?q=${encodeURIComponent(query)}`);
           if (!r.ok) return;
           const data = await r.json();
-          
+
           if (data.schools && data.schools.length > 0) {
             showSchoolDropdown(data.schools, query);
           } else {
-            schoolDropdown.innerHTML = '<div style="padding: 12px; color: #666; text-align: center;">검색 결과가 없습니다</div>';
+            schoolDropdown.innerHTML =
+              '<div style="padding: 12px; color: #666; text-align: center;">검색 결과가 없습니다</div>';
             schoolDropdown.style.display = "block";
           }
         } catch (e) {
@@ -333,33 +334,33 @@
             border-bottom: 1px solid #f0f0f0;
             transition: background-color 0.2s;
           `;
-          
+
           // 검색어 하이라이트
           const highlightedName = schoolName.replace(
             new RegExp(`(${query})`, "gi"),
             '<span style="background: #fff3cd; font-weight: bold;">$1</span>'
           );
           item.innerHTML = highlightedName;
-          
+
           // 마우스 이벤트
           item.addEventListener("mouseenter", () => {
             clearSelection();
             item.style.backgroundColor = "#e8f5e8";
             selectedIndex = index;
           });
-          
+
           item.addEventListener("mouseleave", () => {
             item.style.backgroundColor = "transparent";
           });
-          
+
           // 클릭 이벤트
           item.addEventListener("click", () => {
             selectSchool(schoolName);
           });
-          
+
           schoolDropdown.appendChild(item);
         });
-        
+
         schoolDropdown.style.display = "block";
       }
 
@@ -368,13 +369,14 @@
         schoolNameInput.value = schoolName;
         schoolDropdown.style.display = "none";
         selectedIndex = -1;
-        
+
         // 학교 코드 설정
         schoolCodeInput.value = schoolName;
-        
-        document.getElementById("schoolSearchHint").innerHTML = 
-          `✅ <span style="color: #4caf50; font-weight: bold;">${schoolName}</span>이(가) 선택되었습니다`;
-        
+
+        document.getElementById(
+          "schoolSearchHint"
+        ).innerHTML = `✅ <span style="color: #4caf50; font-weight: bold;">${schoolName}</span>이(가) 선택되었습니다`;
+
         // 등록 버튼 활성화
         registerBtn.disabled = false;
       }
@@ -390,7 +392,8 @@
       // 키보드 네비게이션
       schoolNameInput.addEventListener("keydown", (e) => {
         const items = schoolDropdown.children;
-        if (schoolDropdown.style.display === "none" || items.length === 0) return;
+        if (schoolDropdown.style.display === "none" || items.length === 0)
+          return;
 
         switch (e.key) {
           case "ArrowDown":
@@ -429,18 +432,18 @@
       // 입력 이벤트
       schoolNameInput.addEventListener("input", (e) => {
         const query = e.target.value.trim();
-        
+
         // 힌트 텍스트 업데이트
         if (query.length === 0) {
-          document.getElementById("schoolSearchHint").innerHTML = 
+          document.getElementById("schoolSearchHint").innerHTML =
             "💡 학교명의 일부만 입력해도 검색됩니다 (최소 2글자)";
           schoolCodeInput.value = "";
           registerBtn.disabled = true;
         } else if (query.length === 1) {
-          document.getElementById("schoolSearchHint").innerHTML = 
+          document.getElementById("schoolSearchHint").innerHTML =
             "🔍 한 글자 더 입력하면 검색이 시작됩니다";
         }
-        
+
         // 디바운싱으로 성능 최적화
         clearTimeout(searchTimeout);
         searchTimeout = setTimeout(() => {
@@ -450,7 +453,10 @@
 
       // 외부 클릭 시 드롭다운 숨기기
       document.addEventListener("click", (e) => {
-        if (!schoolNameInput.contains(e.target) && !schoolDropdown.contains(e.target)) {
+        if (
+          !schoolNameInput.contains(e.target) &&
+          !schoolDropdown.contains(e.target)
+        ) {
           schoolDropdown.style.display = "none";
           selectedIndex = -1;
         }
@@ -470,7 +476,7 @@
           try {
             const formData = new FormData(e.target);
             const studentInfo = {
-              schoolName: formData.get("schoolName"),
+              schoolName: schoolNameInput.value.trim(), // 직접 값 가져오기
               grade: parseInt(formData.get("grade")),
               classNumber: parseInt(formData.get("classNumber")),
               studentNumber: parseInt(formData.get("studentNumber")),
@@ -478,8 +484,10 @@
               school_code: schoolCodeInput.value, // [추가 기능]
             };
 
-            if (!schoolCodeInput.value || !schoolNameInput.value.trim()) {
-              alert("학교를 선택해주세요");
+            // 모든 필드 검증
+            if (!studentInfo.schoolName || !studentInfo.grade || !studentInfo.classNumber || 
+                !studentInfo.studentNumber || !studentInfo.studentName || !studentInfo.school_code) {
+              alert("모든 정보를 입력해주세요.");
               registerBtn.disabled = false;
               registerBtn.textContent = "학습 시작하기 🚀";
               return;
