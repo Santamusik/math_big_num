@@ -353,37 +353,45 @@
 
             <div class="form-group">
               <label>학교명</label>
-              <div class="search-container" style="position: relative;">
+              <div class="search-container" style="position: relative">
                 <input
                   type="text"
                   id="schoolName"
                   placeholder="학교명을 입력하세요 (예: 서울초등학교, 부산초등학교)"
                   aria-label="학교명 검색"
                   autocomplete="off"
-                  style="width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: 8px; font-size: 16px;"
-                />
-                <div 
-                  id="schoolDropdown" 
-                  class="school-dropdown" 
                   style="
-                    display: none; 
-                    position: absolute; 
-                    top: 100%; 
-                    left: 0; 
-                    right: 0; 
-                    background: white; 
-                    border: 2px solid #4caf50; 
-                    border-top: none; 
-                    border-radius: 0 0 8px 8px; 
-                    max-height: 200px; 
-                    overflow-y: auto; 
-                    z-index: 1000;
-                    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+                    width: 100%;
+                    padding: 12px;
+                    border: 2px solid #ddd;
+                    border-radius: 8px;
+                    font-size: 16px;
                   "
-                >
-                </div>
+                />
+                <div
+                  id="schoolDropdown"
+                  class="school-dropdown"
+                  style="
+                    display: none;
+                    position: absolute;
+                    top: 100%;
+                    left: 0;
+                    right: 0;
+                    background: white;
+                    border: 2px solid #4caf50;
+                    border-top: none;
+                    border-radius: 0 0 8px 8px;
+                    max-height: 200px;
+                    overflow-y: auto;
+                    z-index: 1000;
+                    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+                  "
+                ></div>
               </div>
-              <div id="schoolSearchHint" style="font-size: 12px; color: #666; margin-top: 5px;">
+              <div
+                id="schoolSearchHint"
+                style="font-size: 12px; color: #666; margin-top: 5px"
+              >
                 💡 학교명의 일부만 입력해도 검색됩니다 (최소 2글자)
               </div>
             </div>
@@ -1152,14 +1160,17 @@
           }
 
           try {
-            const r = await fetch(`/api/admin/schools?q=${encodeURIComponent(query)}`);
+            const r = await fetch(
+              `/api/admin/schools?q=${encodeURIComponent(query)}`
+            );
             if (!r.ok) return;
             const data = await r.json();
-            
+
             if (data.schools && data.schools.length > 0) {
               showSchoolDropdown(data.schools, query);
             } else {
-              schoolDropdown.innerHTML = '<div style="padding: 12px; color: #666; text-align: center;">검색 결과가 없습니다</div>';
+              schoolDropdown.innerHTML =
+                '<div style="padding: 12px; color: #666; text-align: center;">검색 결과가 없습니다</div>';
               schoolDropdown.style.display = "block";
             }
           } catch (e) {
@@ -1181,33 +1192,33 @@
               border-bottom: 1px solid #f0f0f0;
               transition: background-color 0.2s;
             `;
-            
+
             // 검색어 하이라이트
             const highlightedName = schoolName.replace(
-              new RegExp(`(${query})`, 'gi'),
+              new RegExp(`(${query})`, "gi"),
               '<span style="background: #fff3cd; font-weight: bold;">$1</span>'
             );
             item.innerHTML = highlightedName;
-            
+
             // 마우스 이벤트
             item.addEventListener("mouseenter", () => {
               clearSelection();
               item.style.backgroundColor = "#e8f5e8";
               selectedIndex = index;
             });
-            
+
             item.addEventListener("mouseleave", () => {
               item.style.backgroundColor = "transparent";
             });
-            
+
             // 클릭 이벤트
             item.addEventListener("click", () => {
               selectSchool(schoolName);
             });
-            
+
             schoolDropdown.appendChild(item);
           });
-          
+
           schoolDropdown.style.display = "block";
         }
 
@@ -1216,8 +1227,9 @@
           schoolInput.value = schoolName;
           schoolDropdown.style.display = "none";
           selectedIndex = -1;
-          document.getElementById("schoolSearchHint").innerHTML = 
-            `✅ <span style="color: #4caf50; font-weight: bold;">${schoolName}</span>이(가) 선택되었습니다`;
+          document.getElementById(
+            "schoolSearchHint"
+          ).innerHTML = `✅ <span style="color: #4caf50; font-weight: bold;">${schoolName}</span>이(가) 선택되었습니다`;
         }
 
         // 선택 상태 초기화
@@ -1231,7 +1243,8 @@
         // 키보드 네비게이션
         schoolInput.addEventListener("keydown", (e) => {
           const items = schoolDropdown.children;
-          if (schoolDropdown.style.display === "none" || items.length === 0) return;
+          if (schoolDropdown.style.display === "none" || items.length === 0)
+            return;
 
           switch (e.key) {
             case "ArrowDown":
@@ -1270,16 +1283,16 @@
         // 입력 이벤트
         schoolInput.addEventListener("input", (e) => {
           const query = e.target.value.trim();
-          
+
           // 힌트 텍스트 업데이트
           if (query.length === 0) {
-            document.getElementById("schoolSearchHint").innerHTML = 
+            document.getElementById("schoolSearchHint").innerHTML =
               "💡 학교명의 일부만 입력해도 검색됩니다 (최소 2글자)";
           } else if (query.length === 1) {
-            document.getElementById("schoolSearchHint").innerHTML = 
+            document.getElementById("schoolSearchHint").innerHTML =
               "🔍 한 글자 더 입력하면 검색이 시작됩니다";
           }
-          
+
           // 디바운싱으로 성능 최적화
           clearTimeout(searchTimeout);
           searchTimeout = setTimeout(() => {
@@ -1289,7 +1302,10 @@
 
         // 외부 클릭 시 드롭다운 숨기기
         document.addEventListener("click", (e) => {
-          if (!schoolInput.contains(e.target) && !schoolDropdown.contains(e.target)) {
+          if (
+            !schoolInput.contains(e.target) &&
+            !schoolDropdown.contains(e.target)
+          ) {
             schoolDropdown.style.display = "none";
             selectedIndex = -1;
           }
