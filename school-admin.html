@@ -739,7 +739,9 @@
           const schoolName = document.getElementById("schoolName").value;
           const grade = document.getElementById("grade").value;
           const classNumber = document.getElementById("classNumber").value;
-          const pinInput = (document.getElementById("classPin").value || "").trim(); // [추가 기능]
+          const pinInput = (
+            document.getElementById("classPin").value || ""
+          ).trim(); // [추가 기능]
 
           if (!schoolName || !grade || !classNumber) {
             alert("학교명, 학년, 반을 모두 입력해주세요.");

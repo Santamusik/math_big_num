@@ -121,7 +121,7 @@
         </div>
 
         <form class="register-form" id="registerForm">
-          <div class="form-group" style="display: none;">
+          <div class="form-group" style="display: none">
             <label for="regionSelect">지역</label>
             <select id="regionSelect" aria-label="지역 선택">
               <option value="">선택</option>
@@ -485,8 +485,14 @@
             };
 
             // 모든 필드 검증
-            if (!studentInfo.schoolName || !studentInfo.grade || !studentInfo.classNumber || 
-                !studentInfo.studentNumber || !studentInfo.studentName || !studentInfo.school_code) {
+            if (
+              !studentInfo.schoolName ||
+              !studentInfo.grade ||
+              !studentInfo.classNumber ||
+              !studentInfo.studentNumber ||
+              !studentInfo.studentName ||
+              !studentInfo.school_code
+            ) {
               alert("모든 정보를 입력해주세요.");
               registerBtn.disabled = false;
               registerBtn.textContent = "학습 시작하기 🚀";
