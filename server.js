@@ -455,6 +455,11 @@ function generateStudentId(schoolName, grade, classNumber, studentNumber) {
     .padStart(2, "0")}_${timestamp}`;
 }
 
+// 세션 ID 생성 함수
+function generateSessionId() {
+  return Math.random().toString(36).substr(2, 16) + Date.now().toString(36);
+}
+
 // 전체 학생 ID 생성 (기존 방식 - 호환성용)
 function generateSimpleStudentId() {
   return (
@@ -1146,7 +1151,9 @@ app.post("/api/admin/change-pin", (req, res) => {
     }
 
     // 교사 코드 검증
-    const validCodes = (process.env.TEACHER_CODES || "").split(",").map(code => code.trim());
+    const validCodes = (process.env.TEACHER_CODES || "")
+      .split(",")
+      .map((code) => code.trim());
     if (!validCodes.includes(teacherCode)) {
       return res.status(401).json({
         success: false,
@@ -1163,7 +1170,7 @@ app.post("/api/admin/change-pin", (req, res) => {
     }
 
     const classInfo = classCodes.get(classCode);
-    
+
     // 기존 PIN 검증
     if (classInfo.pin !== oldPin) {
       return res.status(401).json({
@@ -1189,7 +1196,6 @@ app.post("/api/admin/change-pin", (req, res) => {
       success: true,
       message: "PIN이 성공적으로 변경되었습니다.",
     });
-
   } catch (error) {
     console.error("PIN 변경 오류:", error);
     res.status(500).json({
