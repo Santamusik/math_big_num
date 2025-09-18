@@ -203,7 +203,6 @@
         margin: 8px 0 12px 0;
       }
 
-
       /* [추가 기능] QR 미리보기 영역 */
       .qr-area {
         margin-top: 12px;
@@ -235,7 +234,6 @@
         border: 1px solid #ccc;
         border-radius: 6px;
       }
-
 
       /* [추가 기능] 토스트 */
       .toast {
@@ -345,14 +343,23 @@
             <!-- [추가 기능] 학급 PIN 입력 -->
             <div class="form-group" style="margin-top: 10px">
               <label>학급 PIN(6자리, 관리자만 보임)</label>
-              <input
-                type="password"
-                id="classPin"
-                maxlength="6"
-                class="login-input"
-                aria-label="학급 PIN 입력"
-                placeholder="예: 123456"
-              />
+              <div style="display: flex; gap: 10px;">
+                <input
+                  type="password"
+                  id="classPin"
+                  maxlength="6"
+                  class="login-input"
+                  aria-label="학급 PIN 입력"
+                  placeholder="예: 123456"
+                  style="flex: 1;"
+                />
+                <button class="btn-secondary" id="changePinBtn" style="display: none; white-space: nowrap;">
+                  PIN 변경
+                </button>
+              </div>
+              <div style="font-size: 11px; color: #666; margin-top: 5px;">
+                💡 학급 생성 후에도 PIN을 변경할 수 있습니다.
+              </div>
             </div>
 
             <div
@@ -423,7 +430,6 @@
             </div>
 
             <button class="btn-secondary" id="refreshBtn">현황 새로고침</button>
-
           </div>
         </div>
 
@@ -789,6 +795,8 @@
               }
 
               alert("학급 코드가 성공적으로 생성되었습니다!");
+              // PIN 변경 버튼 표시
+              document.getElementById("changePinBtn").style.display = "block";
             } else {
               alert("학급 코드 생성 실패: " + data.error);
             }
@@ -797,6 +805,49 @@
             alert("학급 코드 생성 중 오류가 발생했습니다.");
           }
         });
+
+      // PIN 변경 기능
+      document.getElementById("changePinBtn").addEventListener("click", async function () {
+        const newPin = document.getElementById("classPin").value.trim();
+        
+        if (!newPin || newPin.length !== 6 || !/^\d{6}$/.test(newPin)) {
+          alert("6자리 숫자로 PIN을 입력해주세요.");
+          return;
+        }
+
+        if (!currentClassInfo || !currentClassInfo.classCode) {
+          alert("먼저 학급 코드를 생성해주세요.");
+          return;
+        }
+
+        try {
+          const response = await fetch("/api/admin/change-pin", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              classCode: currentClassInfo.classCode,
+              oldPin: currentPin,
+              newPin: newPin,
+              teacherCode: currentTeacherCode,
+            }),
+          });
+
+          const data = await response.json();
+          if (data.success) {
+            currentPin = newPin;
+            currentTeacherAuth.pin = newPin;
+            alert("PIN이 성공적으로 변경되었습니다!");
+            showToast("PIN 변경 완료");
+          } else {
+            alert("PIN 변경 실패: " + data.error);
+          }
+        } catch (error) {
+          console.error("PIN 변경 오류:", error);
+          alert("PIN 변경 중 오류가 발생했습니다.");
+        }
+      });
 
       // 코드 복사
       document
@@ -834,12 +885,16 @@
 
           const data = await response.json();
 
-          if (data.success) {
-            updateStats(data.stats);
-            updateStudentsTable(data.students);
-          } else {
-            console.error("현황 조회 실패:", data.error);
+        if (data.success) {
+          updateStats(data.stats);
+          updateStudentsTable(data.students);
+          // 기존 학급이 있으면 PIN 변경 버튼 표시
+          if (currentClassInfo && currentClassInfo.classCode) {
+            document.getElementById("changePinBtn").style.display = "block";
           }
+        } else {
+          console.error("현황 조회 실패:", data.error);
+        }
         } catch (error) {
           console.error("현황 조회 오류:", error);
         }
@@ -943,7 +998,6 @@
           }
         });
 
-
       // [추가 기능] 토스트
       function showToast(msg) {
         const el = document.getElementById("toast");
@@ -972,7 +1026,7 @@
 
           try {
             const r = await fetch(
-              `/api/admin/schools?q=${encodeURIComponent(query)}`
+              `/api/schools?q=${encodeURIComponent(query)}`
             );
             if (!r.ok) return;
             const data = await r.json();

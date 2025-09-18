@@ -1125,7 +1125,79 @@ app.post("/api/admin/class-stats", (req, res) => {
   }
 });
 
+// PIN 변경 API
+app.post("/api/admin/change-pin", (req, res) => {
+  try {
+    const { classCode, oldPin, newPin, teacherCode } = req.body;
 
+    if (!classCode || !oldPin || !newPin || !teacherCode) {
+      return res.status(400).json({
+        success: false,
+        error: "필수 정보가 누락되었습니다.",
+      });
+    }
+
+    // 새 PIN 검증
+    if (!/^\d{6}$/.test(newPin)) {
+      return res.status(400).json({
+        success: false,
+        error: "PIN은 6자리 숫자여야 합니다.",
+      });
+    }
+
+    // 교사 코드 검증
+    const validCodes = (process.env.TEACHER_CODES || "").split(",").map(code => code.trim());
+    if (!validCodes.includes(teacherCode)) {
+      return res.status(401).json({
+        success: false,
+        error: "유효하지 않은 교사 코드입니다.",
+      });
+    }
+
+    // 학급 코드 존재 확인
+    if (!classCodes.has(classCode)) {
+      return res.status(404).json({
+        success: false,
+        error: "존재하지 않는 학급 코드입니다.",
+      });
+    }
+
+    const classInfo = classCodes.get(classCode);
+    
+    // 기존 PIN 검증
+    if (classInfo.pin !== oldPin) {
+      return res.status(401).json({
+        success: false,
+        error: "기존 PIN이 올바르지 않습니다.",
+      });
+    }
+
+    // PIN 변경
+    classInfo.pin = newPin;
+    classCodes.set(classCode, classInfo);
+
+    // 교사 세션 업데이트
+    if (teacherSessions.has(classCode)) {
+      const teacherSession = teacherSessions.get(classCode);
+      teacherSession.pin = newPin;
+      teacherSessions.set(classCode, teacherSession);
+    }
+
+    console.log(`PIN 변경 완료: ${classCode} (교사: ${teacherCode})`);
+
+    res.json({
+      success: true,
+      message: "PIN이 성공적으로 변경되었습니다.",
+    });
+
+  } catch (error) {
+    console.error("PIN 변경 오류:", error);
+    res.status(500).json({
+      success: false,
+      error: "PIN 변경 중 오류가 발생했습니다.",
+    });
+  }
+});
 
 // 교사 코드 검증 API
 app.post("/api/admin/verify-teacher-code", (req, res) => {
