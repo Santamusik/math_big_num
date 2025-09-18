@@ -170,11 +170,178 @@
           grid-template-columns: repeat(2, 1fr);
         }
       }
+
+      /* [추가 기능] 로그인 오버레이 */
+      .login-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.5);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+      }
+      .login-card {
+        background: #ffffff;
+        padding: 24px;
+        border-radius: 12px;
+        box-shadow: 0 10px 24px rgba(0, 0, 0, 0.2);
+        width: 100%;
+        max-width: 360px;
+        border: 2px solid #e3f2fd;
+      }
+      .login-card h2 {
+        margin: 0 0 12px 0;
+        font-size: 18px;
+        color: #1976d2;
+      }
+      .login-input {
+        width: 100%;
+        padding: 10px 12px;
+        border: 1px solid #ccc;
+        border-radius: 8px;
+        margin: 8px 0 12px 0;
+      }
+
+      /* [추가 기능] 즉시 개입 패널 */
+      .interventions-panel {
+        background: #fff8e1;
+        border: 2px solid #ffe082;
+        border-radius: 12px;
+        padding: 16px;
+        margin-bottom: 20px;
+      }
+      .intervention-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 8px 10px;
+        border-bottom: 1px dashed #ffecb3;
+      }
+      .intervention-item:last-child {
+        border-bottom: none;
+      }
+      .badge-reason {
+        background: #ff9800;
+        color: #fff;
+        padding: 2px 8px;
+        border-radius: 999px;
+        font-size: 12px;
+      }
+      .btn-linkcopy {
+        background: #9c27b0;
+        color: #fff;
+        border: none;
+        padding: 6px 10px;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 12px;
+      }
+
+      /* [추가 기능] QR 미리보기 영역 */
+      .qr-area {
+        margin-top: 12px;
+        display: grid;
+        grid-template-columns: 120px 1fr;
+        gap: 12px;
+        align-items: center;
+      }
+      .qr-img {
+        width: 120px;
+        height: 120px;
+        background: #fafafa;
+        border: 1px solid #eee;
+        border-radius: 8px;
+        object-fit: contain;
+      }
+      .qr-tools {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+      .short-url-row {
+        display: flex;
+        gap: 8px;
+      }
+      .short-url-input {
+        flex: 1;
+        padding: 8px;
+        border: 1px solid #ccc;
+        border-radius: 6px;
+      }
+
+      /* [추가 기능] 히트맵 */
+      .heatmap-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 10px;
+      }
+      .heatmap-table th,
+      .heatmap-table td {
+        border: 1px solid #e0e0e0;
+        padding: 8px;
+        text-align: center;
+        font-size: 12px;
+      }
+      .heatmap-table th {
+        background: #f5f5f5;
+        position: sticky;
+        top: 0;
+        z-index: 1;
+      }
+      .heatmap-cell {
+        position: relative;
+        border-radius: 6px;
+      }
+      .heatmap-cell .rate-label {
+        position: relative;
+        z-index: 2;
+        font-weight: bold;
+        color: #1a237e;
+      }
+      .heatmap-legend {
+        font-size: 12px;
+        color: #666;
+        margin-top: 8px;
+      }
+
+      /* [추가 기능] 토스트 */
+      .toast {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        background: rgba(0, 0, 0, 0.8);
+        color: #fff;
+        padding: 10px 14px;
+        border-radius: 8px;
+        font-size: 12px;
+        display: none;
+        z-index: 2000;
+      }
     </style>
   </head>
   <body>
     <div class="container">
       <div class="admin-container">
+        <!-- [추가 기능] 즉시 개입 패널 -->
+        <div
+          class="interventions-panel"
+          id="interventionsPanel"
+          aria-label="즉시 개입 알림"
+        >
+          <div class="section-title" style="margin-top: 0">🔔 즉시 개입</div>
+          <div
+            id="interventionsList"
+            aria-live="polite"
+            aria-busy="false"
+            style="max-height: 180px; overflow: auto"
+          >
+            <div style="color: #8d6e63; font-size: 14px">
+              최근 신호가 없습니다.
+            </div>
+          </div>
+        </div>
         <div class="admin-header">
           <h1>👩‍🏫 선생님 관리 페이지</h1>
           <p>학급 관리 및 학생 진도 현황을 확인하세요</p>
@@ -190,7 +357,10 @@
                 type="text"
                 id="schoolName"
                 placeholder="예: 서울초등학교"
+                list="schoolList"
+                aria-label="학교명 검색"
               />
+              <datalist id="schoolList"></datalist>
             </div>
 
             <div class="form-row">
@@ -198,9 +368,7 @@
                 <label>학년</label>
                 <select id="grade">
                   <option value="">선택</option>
-                  <option value="1">1학년</option>
-                  <option value="2">2학년</option>
-                  <option value="3">3학년</option>
+                  <!-- [추가 기능] 학년 제한 4~6학년 -->
                   <option value="4">4학년</option>
                   <option value="5">5학년</option>
                   <option value="6">6학년</option>
@@ -228,6 +396,19 @@
               학급 코드 생성
             </button>
 
+            <!-- [추가 기능] 학급 PIN 입력 -->
+            <div class="form-group" style="margin-top: 10px">
+              <label>학급 PIN(6자리, 관리자만 보임)</label>
+              <input
+                type="password"
+                id="classPin"
+                maxlength="6"
+                class="login-input"
+                aria-label="학급 PIN 입력"
+                placeholder="예: 123456"
+              />
+            </div>
+
             <div
               id="schoolCodeDisplay"
               class="school-code-display"
@@ -236,6 +417,40 @@
               <div>📋 학생 등록 코드</div>
               <div class="school-code" id="schoolCode"></div>
               <button class="copy-button" id="copyCodeBtn">코드 복사</button>
+              <!-- [추가 기능] QR/짧은 URL -->
+              <div class="qr-area" id="qrArea" style="display: none">
+                <img id="qrImg" alt="학급 등록 QR 코드" class="qr-img" />
+                <div class="qr-tools">
+                  <div class="short-url-row">
+                    <input
+                      id="shortUrl"
+                      class="short-url-input"
+                      aria-label="짧은 URL"
+                      readonly
+                    />
+                    <button class="btn-secondary" id="copyShortUrlBtn">
+                      URL 복사
+                    </button>
+                  </div>
+                  <div style="display: flex; gap: 8px; flex-wrap: wrap">
+                    <button class="btn-secondary" id="downloadPngBtn">
+                      QR PNG 다운로드
+                    </button>
+                    <label style="font-size: 12px; color: #666"
+                      >유효기간(일):
+                      <input
+                        id="qrDays"
+                        type="number"
+                        min="1"
+                        max="30"
+                        value="7"
+                        style="width: 64px; margin-left: 6px"
+                        aria-label="QR 유효기간(일)"
+                      />
+                    </label>
+                  </div>
+                </div>
+              </div>
               <div style="margin-top: 15px; font-size: 14px; color: #666">
                 학생들에게 이 코드를 알려주세요!<br />
                 등록할 때 "학급 코드로 등록" 버튼을 누르고 입력하면 됩니다.
@@ -262,6 +477,35 @@
             </div>
 
             <button class="btn-secondary" id="refreshBtn">현황 새로고침</button>
+
+            <!-- [추가 기능] 히트맵 -->
+            <div style="margin-top: 20px">
+              <div class="section-title" style="gap: 6px">
+                🔥 오류태그 히트맵
+                <span style="font-size: 12px; color: #666; font-weight: normal"
+                  >(행=단계, 열=오류태그)</span
+                >
+              </div>
+              <div style="font-size: 12px; color: #666">
+                • 이 히트맵은
+                <b>오개념(오류태그) 기반의 형성평가 도구</b>입니다. 성취기준은
+                보조적으로 참조하세요.<br />
+                • 색 강도는 <b>오류 발생률(%)</b>을 의미하며, 수치도 함께
+                제공합니다.<br />
+                • 이 지표는 개인의 고정된 능력이 아니라
+                <b>지금 개입이 필요한 영역</b>을 보여줍니다.
+              </div>
+              <div style="overflow: auto">
+                <table
+                  class="heatmap-table"
+                  id="heatmapTable"
+                  aria-label="학급 오류태그 히트맵"
+                ></table>
+              </div>
+              <div class="heatmap-legend">
+                진한 색 = 높은 발생률, 각 셀에 % 표시
+              </div>
+            </div>
           </div>
         </div>
 
@@ -290,10 +534,238 @@
       </div>
     </div>
 
+    <!-- [추가 기능] 로그인 오버레이 -->
+    <div
+      class="login-overlay"
+      id="loginOverlay"
+      role="dialog"
+      aria-modal="true"
+      aria-label="관리자 로그인"
+    >
+      <div class="login-card">
+        <!-- 1단계: 교사 코드 입력 -->
+        <div id="teacherCodeStep">
+          <h2>교사 인증</h2>
+          <label for="teacherCodeInput" style="font-size: 12px; color: #555"
+            >교사 코드 (교육청 배포)</label
+          >
+          <input
+            type="text"
+            id="teacherCodeInput"
+            class="login-input"
+            placeholder="예: SEOUL_EDU_2024"
+            maxlength="30"
+          />
+          <button class="btn-primary" id="verifyTeacherCodeBtn">
+            교사 코드 인증
+          </button>
+          <div
+            style="
+              font-size: 11px;
+              color: #666;
+              margin-top: 8px;
+              line-height: 1.4;
+            "
+          >
+            💡 각 지역 교육청에서 배포한 교사 코드를 입력하세요.<br />
+            📞 코드를 모르시면 교육청에 문의하세요.
+          </div>
+        </div>
+
+        <!-- 2단계: 학급 코드 로그인 (숨김) -->
+        <div id="classLoginStep" style="display: none">
+          <h2>교사 로그인</h2>
+          <div
+            style="font-size: 12px; color: #4caf50; margin-bottom: 10px"
+            id="regionInfo"
+          ></div>
+          <label for="adminClassCode" style="font-size: 12px; color: #555"
+            >학급 코드</label
+          >
+          <input
+            type="text"
+            id="adminClassCode"
+            class="login-input"
+            placeholder="예: 서울501ABCD"
+            maxlength="20"
+          />
+          <label for="adminPin" style="font-size: 12px; color: #555"
+            >PIN (6자리 숫자)</label
+          >
+          <input
+            type="password"
+            id="adminPin"
+            class="login-input"
+            placeholder="123456"
+            maxlength="6"
+            pattern="[0-9]{6}"
+          />
+          <button class="btn-primary" id="loginBtn">로그인</button>
+          <div
+            style="
+              font-size: 11px;
+              color: #666;
+              margin-top: 8px;
+              line-height: 1.4;
+            "
+          >
+            💡 학급 코드 생성 후 받은 코드와 설정한 PIN을 입력하세요.<br />
+            ⚠️ 코드와 PIN을 분실하면 새로 생성해야 합니다.
+          </div>
+          <button
+            type="button"
+            id="backToTeacherCodeBtn"
+            style="background: #666; margin-top: 10px"
+          >
+            ← 교사 코드 다시 입력
+          </button>
+        </div>
+
+        <div
+          id="loginMsg"
+          style="font-size: 12px; color: #c62828; margin-top: 6px"
+        ></div>
+      </div>
+    </div>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
     <script src="config.js"></script>
     <script>
       let currentSchoolCode = null;
       let currentClassInfo = null;
+      let currentPin = null; // [추가 기능]
+      let demoMode = false; // [추가 기능]
+
+      // [개선된 기능] 2단계 교사 인증 시스템
+      let currentTeacherAuth = { classCode: null, pin: null };
+      let currentTeacherCode = null;
+
+      async function ensureTeacherSession() {
+        // 기존 세션 확인
+        if (currentTeacherAuth.classCode && currentTeacherAuth.pin) {
+          try {
+            const r = await fetch(
+              `/api/admin/session?classCode=${encodeURIComponent(
+                currentTeacherAuth.classCode
+              )}&pin=${encodeURIComponent(currentTeacherAuth.pin)}`
+            );
+            if (r.ok) {
+              document.getElementById("loginOverlay").style.display = "none";
+              return true;
+            }
+          } catch (e) {}
+        }
+
+        // 로그인 필요 - 1단계부터 시작
+        document.getElementById("teacherCodeStep").style.display = "block";
+        document.getElementById("classLoginStep").style.display = "none";
+        document.getElementById("loginOverlay").style.display = "flex";
+        return false;
+      }
+
+      // 1단계: 교사 코드 인증
+      document
+        .getElementById("verifyTeacherCodeBtn")
+        .addEventListener("click", async () => {
+          const teacherCode = document
+            .getElementById("teacherCodeInput")
+            .value.trim();
+
+          if (!teacherCode) {
+            document.getElementById("loginMsg").textContent =
+              "교사 코드를 입력해주세요";
+            return;
+          }
+
+          try {
+            const r = await fetch("/api/admin/verify-teacher-code", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ teacherCode: teacherCode }),
+            });
+
+            const data = await r.json();
+
+            if (r.ok && data.success) {
+              currentTeacherCode = teacherCode;
+              document.getElementById("teacherCodeStep").style.display = "none";
+              document.getElementById("classLoginStep").style.display = "block";
+              document.getElementById(
+                "regionInfo"
+              ).textContent = `✅ ${data.regionName} 교사 인증 완료`;
+              document.getElementById("loginMsg").textContent = "";
+              showToast(`교사 인증 성공: ${data.regionName}`);
+            } else {
+              document.getElementById("loginMsg").textContent =
+                data.error || "교사 코드 인증 실패";
+            }
+          } catch (e) {
+            document.getElementById("loginMsg").textContent = "네트워크 오류";
+          }
+        });
+
+      // 뒤로 가기 버튼
+      document
+        .getElementById("backToTeacherCodeBtn")
+        .addEventListener("click", () => {
+          document.getElementById("teacherCodeStep").style.display = "block";
+          document.getElementById("classLoginStep").style.display = "none";
+          document.getElementById("loginMsg").textContent = "";
+        });
+
+      // 2단계: 학급 코드 로그인
+      document
+        .getElementById("loginBtn")
+        .addEventListener("click", async () => {
+          const classCode = document
+            .getElementById("adminClassCode")
+            .value.trim();
+          const pin = document.getElementById("adminPin").value.trim();
+
+          if (!classCode || !pin) {
+            document.getElementById("loginMsg").textContent =
+              "학급 코드와 PIN을 모두 입력해주세요";
+            return;
+          }
+
+          try {
+            const r = await fetch("/api/admin/teacher-login", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ classCode: classCode, pin: pin }),
+            });
+
+            const data = await r.json();
+
+            if (r.ok && data.success) {
+              currentTeacherAuth = { classCode: classCode, pin: pin };
+              document.getElementById("loginOverlay").style.display = "none";
+              showToast(
+                `로그인 성공: ${data.classInfo.schoolName} ${data.classInfo.grade}학년 ${data.classInfo.classNumber}반`
+              );
+
+              // 학급 정보 자동 입력
+              document.getElementById("schoolName").value =
+                data.classInfo.schoolName;
+              document.getElementById("grade").value = data.classInfo.grade;
+              document.getElementById("classNumber").value =
+                data.classInfo.classNumber;
+              document.getElementById("classPin").value = pin;
+            } else {
+              document.getElementById("loginMsg").textContent =
+                data.error || "로그인 실패";
+            }
+          } catch (e) {
+            document.getElementById("loginMsg").textContent = "네트워크 오류";
+          }
+        });
+
+      // [추가 기능] URL 파라미터로 demo 모드
+      try {
+        const usp = new URLSearchParams(location.search);
+        demoMode = usp.get("demo") === "1";
+      } catch (e) {}
 
       // 학급 코드 생성
       document
@@ -302,6 +774,7 @@
           const schoolName = document.getElementById("schoolName").value;
           const grade = document.getElementById("grade").value;
           const classNumber = document.getElementById("classNumber").value;
+          currentPin = (document.getElementById("classPin").value || "").trim(); // [추가 기능]
 
           if (!schoolName || !grade || !classNumber) {
             alert("학교명, 학년, 반을 모두 입력해주세요.");
@@ -331,6 +804,8 @@
                 schoolName: schoolName,
                 grade: parseInt(grade),
                 classNumber: parseInt(classNumber),
+                pin: currentPin || null,
+                teacherCode: currentTeacherCode, // 교사 코드 추가
               }),
             });
 
@@ -350,6 +825,13 @@
 
               // 현황 새로고침
               refreshClassStats();
+
+              // [추가 기능] QR 생성 토큰 요청 및 프리뷰 표시
+              try {
+                await generateAndShowQr();
+              } catch (e) {
+                console.warn("QR 생성 실패", e);
+              }
 
               alert("학급 코드가 성공적으로 생성되었습니다!");
             } else {
@@ -388,7 +870,11 @@
             headers: {
               "Content-Type": "application/json",
             },
-            body: JSON.stringify(currentClassInfo),
+            body: JSON.stringify({
+              ...currentClassInfo,
+              classCode: currentTeacherAuth.classCode,
+              pin: currentTeacherAuth.pin,
+            }), // [개선된 기능] 교사 인증
           });
 
           const data = await response.json();
@@ -396,6 +882,8 @@
           if (data.success) {
             updateStats(data.stats);
             updateStudentsTable(data.students);
+            // [추가 기능] 히트맵 갱신
+            await refreshHeatmap();
           } else {
             console.error("현황 조회 실패:", data.error);
           }
@@ -432,9 +920,17 @@
             "ko-KR"
           );
 
+          // [추가 기능] 이름 마스킹/이니셜 처리, 툴팁으로 전체 노출
+          const displayName = demoMode
+            ? `${(student.studentName || "").slice(0, 1)}*`
+            : `${(student.studentName || "").slice(0, 1)}*`;
+          const nameCell = `<span title="${
+            student.studentName || ""
+          }">${displayName}</span>`;
+
           row.innerHTML = `
                     <td>${student.studentNumber}</td>
-                    <td>${student.studentName}</td>
+                    <td>${nameCell}</td>
                     <td>
                         <div class="progress-bar">
                             <div class="progress-fill" style="width: ${completionRate}%"></div>
@@ -447,6 +943,199 @@
           tbody.appendChild(row);
         });
       }
+
+      // [추가 기능] QR 생성/표시/다운로드/복사
+      async function generateAndShowQr() {
+        if (!currentSchoolCode) return;
+        const days = parseInt(
+          document.getElementById("qrDays").value || "7",
+          10
+        );
+        const r = await fetch("/api/admin/qr-token", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            classCode: currentSchoolCode,
+            pin: currentPin || null,
+            expiresInSec: days * 86400,
+          }),
+        });
+        if (!r.ok) throw new Error("QR 토큰 생성 실패");
+        const data = await r.json();
+        if (!data.success) throw new Error("QR 응답 실패");
+        const imgUrl = `/api/admin/qr.png?token=${encodeURIComponent(
+          data.token
+        )}`;
+        document.getElementById("qrImg").src = imgUrl;
+        document.getElementById("qrArea").style.display = "grid";
+        const shortUrl = data.shortUrl;
+        const input = document.getElementById("shortUrl");
+        input.value = shortUrl;
+        document.getElementById("downloadPngBtn").onclick = () => {
+          const a = document.createElement("a");
+          a.href = imgUrl;
+          a.download = `${currentSchoolCode}.png`;
+          a.click();
+        };
+      }
+      document
+        .getElementById("copyShortUrlBtn")
+        .addEventListener("click", async () => {
+          const v = document.getElementById("shortUrl").value;
+          try {
+            await navigator.clipboard.writeText(v);
+            showToast("URL을 복사했어요");
+          } catch (e) {
+            alert("복사 실패");
+          }
+        });
+
+      // [추가 기능] 개입 알림 폴링 (8초)
+      async function pollInterventions() {
+        if (!currentSchoolCode) return;
+        try {
+          const r = await fetch(
+            `/api/admin/interventions?classCode=${encodeURIComponent(
+              currentSchoolCode
+            )}&pin=${encodeURIComponent(currentPin || "")}`
+          );
+          if (!r.ok) return;
+          const data = await r.json();
+          if (!data.success) return;
+          renderInterventions(data.items || []);
+        } catch (e) {}
+      }
+      setInterval(pollInterventions, 8000);
+
+      function renderInterventions(items) {
+        const list = document.getElementById("interventionsList");
+        list.innerHTML = "";
+        if (!items.length) {
+          list.innerHTML =
+            '<div style="color:#8d6e63;font-size:14px">최근 신호가 없습니다.</div>';
+          return;
+        }
+        items.slice(0, 20).forEach((it) => {
+          const row = document.createElement("div");
+          row.className = "intervention-item";
+          const initial = (it.studentName || "").slice(0, 1) + "*";
+          const label = `[${it.studentNumber}/${initial}] 단계${
+            it.stage
+          }, 경과${Math.round(it.elapsed || 0)}초, 사유:${it.reason}${
+            it.errorTags && it.errorTags.length
+              ? `, 최근태그:${it.errorTags[0]}`
+              : ""
+          }`;
+          const left = document.createElement("div");
+          left.textContent = label;
+          left.setAttribute("aria-label", label);
+          const btn = document.createElement("button");
+          btn.className = "btn-linkcopy";
+          btn.textContent = "과제 링크 복사";
+          btn.onclick = async () => {
+            const url = `${location.origin}/page${it.stage}.html`;
+            try {
+              await navigator.clipboard.writeText(url);
+              showToast("링크를 복사했어요");
+            } catch (e) {
+              alert("복사 실패");
+            }
+          };
+          row.appendChild(left);
+          row.appendChild(btn);
+          list.appendChild(row);
+        });
+      }
+
+      // [추가 기능] 히트맵 로딩/렌더링
+      async function refreshHeatmap() {
+        if (!currentSchoolCode) return;
+        const r = await fetch(
+          `/api/admin/heatmap?classCode=${encodeURIComponent(
+            currentSchoolCode
+          )}&pin=${encodeURIComponent(currentPin || "")}`
+        );
+        if (!r.ok) return;
+        const data = await r.json();
+        if (!data.success) return;
+        renderHeatmap(data.tags, data.rows);
+      }
+      function renderHeatmap(tagMeta, rows) {
+        const table = document.getElementById("heatmapTable");
+        const tagKeys = [
+          "zeroPadding",
+          "unitSwitch",
+          "comma",
+          "placeValue",
+          "magnitude",
+          "compareSign",
+          "skipCounting",
+          "wordParsing",
+        ];
+        // 헤더
+        let thead =
+          "<thead><tr><th>단계</th>" +
+          tagKeys
+            .map((k) => {
+              const t = tagMeta[k];
+              const title = `${t.label}\n${t.definition}\n교정팁: ${t.tip}`;
+              return `<th title="${title}">${t.label}</th>`;
+            })
+            .join("") +
+          "</tr></thead>";
+        let tbody = "<tbody>";
+        rows.forEach((r) => {
+          tbody += `<tr><td>단계 ${r.stage}</td>`;
+          tagKeys.forEach((k) => {
+            const v = r.rates[k] || { rate: 0 };
+            const pct = v.rate || 0;
+            const bg = `rgba(33, 150, 243, ${Math.min(0.1 + pct / 100, 0.95)})`;
+            const title = `${tagMeta[k].label}: ${pct}%\n${tagMeta[k].definition}\n교정팁: ${tagMeta[k].tip}`;
+            tbody += `<td title="${title}"><div class="heatmap-cell" style="background:${bg}; padding:6px"><span class="rate-label">${pct}%</span></div></td>`;
+          });
+          tbody += "</tr>";
+        });
+        tbody += "</tbody>";
+        table.innerHTML = thead + tbody;
+      }
+
+      // [추가 기능] 토스트
+      function showToast(msg) {
+        const el = document.getElementById("toast");
+        el.textContent = msg;
+        el.style.display = "block";
+        setTimeout(() => {
+          el.style.display = "none";
+        }, 1400);
+      }
+
+      // 초기 세션 체크 및 주기적 개입 폴링 시작
+      (async () => {
+        await ensureTeacherSession();
+        setTimeout(pollInterventions, 1000);
+        // [추가 기능] 학교 검색 typeahead
+        const schoolInput = document.getElementById("schoolName");
+        let lastQ = "";
+        schoolInput.addEventListener("input", async () => {
+          const q = schoolInput.value.trim();
+          if (q.length < 2 || q === lastQ) return;
+          lastQ = q;
+          try {
+            const r = await fetch(
+              `/api/admin/schools?q=${encodeURIComponent(q)}`
+            );
+            if (!r.ok) return;
+            const data = await r.json();
+            const dl = document.getElementById("schoolList");
+            dl.innerHTML = "";
+            (data.schools || []).forEach((name) => {
+              const opt = document.createElement("option");
+              opt.value = name;
+              dl.appendChild(opt);
+            });
+          } catch (e) {}
+        });
+      })();
     </script>
   </body>
 </html>

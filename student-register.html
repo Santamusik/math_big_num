@@ -122,14 +122,18 @@
 
         <form class="register-form" id="registerForm">
           <div class="form-group">
-            <label for="schoolName">학교명</label>
-            <input
-              type="text"
-              id="schoolName"
-              name="schoolName"
-              placeholder="예: 서울초등학교"
-              required
-            />
+            <label for="regionSelect">지역</label>
+            <select id="regionSelect" aria-label="지역 선택" required>
+              <option value="">선택</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="schoolSelect">학교</label>
+            <select id="schoolSelect" aria-label="학교 선택" required disabled>
+              <option value="">입력해주세요</option>
+            </select>
+            <input type="hidden" id="schoolCode" name="school_code" />
           </div>
 
           <div class="form-row">
@@ -137,9 +141,7 @@
               <label for="grade">학년</label>
               <select id="grade" name="grade" required>
                 <option value="">선택하세요</option>
-                <option value="1">1학년</option>
-                <option value="2">2학년</option>
-                <option value="3">3학년</option>
+                <!-- [추가 기능] 학년 제한 4~6학년 -->
                 <option value="4">4학년</option>
                 <option value="5">5학년</option>
                 <option value="6">6학년</option>
@@ -188,7 +190,12 @@
             />
           </div>
 
-          <button type="submit" class="register-button" id="registerBtn">
+          <button
+            type="submit"
+            class="register-button"
+            id="registerBtn"
+            disabled
+          >
             학습 시작하기 🚀
           </button>
         </form>
@@ -220,12 +227,71 @@
 
     <script src="config.js"></script>
     <script>
+      // [추가 기능] 지역/학교 JSON 로드 및 바인딩
+      let SCHOOL_DATA = [];
+      const regionSelect = document.getElementById("regionSelect");
+      const schoolSelect = document.getElementById("schoolSelect");
+      const schoolCodeInput = document.getElementById("schoolCode");
+      const registerBtn = document.getElementById("registerBtn");
+
+      async function loadSchools() {
+        try {
+          const res = await fetch("/api/schools-map");
+          const payload = await res.json();
+          if (!payload.success || !Array.isArray(payload.regions))
+            throw new Error("형식 오류");
+          SCHOOL_DATA = payload.regions;
+          regionSelect.innerHTML =
+            '<option value="">선택</option>' +
+            SCHOOL_DATA.map(
+              (r) =>
+                `<option value="${r.region_code}">${r.region_name}</option>`
+            ).join("");
+        } catch (e) {
+          alert("학교 데이터 로드 오류: JSON 파싱 실패 또는 네트워크 오류");
+        }
+      }
+
+      regionSelect.addEventListener("change", () => {
+        schoolCodeInput.value = "";
+        registerBtn.disabled = true;
+        const code = regionSelect.value;
+        const region = SCHOOL_DATA.find((r) => r.region_code === code);
+        if (!region) {
+          schoolSelect.innerHTML = '<option value="">입력해주세요</option>';
+          schoolSelect.disabled = true;
+          return;
+        }
+        schoolSelect.disabled = false;
+        schoolSelect.innerHTML =
+          '<option value="">선택</option>' +
+          region.schools
+            .map(
+              (s) =>
+                `<option value="${s.school_code}">${s.school_name}</option>`
+            )
+            .join("");
+      });
+
+      schoolSelect.addEventListener("change", () => {
+        const code = schoolSelect.value;
+        if (!code) {
+          schoolCodeInput.value = "";
+          registerBtn.disabled = true;
+          return;
+        }
+        schoolCodeInput.value = code;
+        registerBtn.disabled = false;
+      });
+
+      // DOM ready 시 로드
+      document.addEventListener("DOMContentLoaded", loadSchools);
+
       document
         .getElementById("registerForm")
         .addEventListener("submit", async function (e) {
           e.preventDefault();
 
-          const registerBtn = document.getElementById("registerBtn");
           registerBtn.disabled = true;
           registerBtn.textContent = "등록 중...";
 
@@ -237,7 +303,15 @@
               classNumber: parseInt(formData.get("classNumber")),
               studentNumber: parseInt(formData.get("studentNumber")),
               studentName: formData.get("studentName"),
+              school_code: schoolCodeInput.value, // [추가 기능]
             };
+
+            if (!schoolCodeInput.value) {
+              alert("학교를 선택해주세요 (학교 코드 누락)");
+              registerBtn.disabled = false;
+              registerBtn.textContent = "학습 시작하기 🚀";
+              return;
+            }
 
             // 학생 등록 API 호출
             const response = await fetch("/api/student/register", {
@@ -406,6 +480,29 @@
           }
         }
       });
+
+      // [추가 기능] 학교명 typeahead (공개 API)
+      (function initSchoolTypeahead() {
+        const input = document.getElementById("schoolName");
+        const dl = document.getElementById("schoolList");
+        let lastQ = "";
+        input.addEventListener("input", async () => {
+          const q = input.value.trim();
+          if (q.length < 2 || q === lastQ) return;
+          lastQ = q;
+          try {
+            const r = await fetch(`/api/schools?q=${encodeURIComponent(q)}`);
+            if (!r.ok) return;
+            const data = await r.json();
+            dl.innerHTML = "";
+            (data.schools || []).forEach((name) => {
+              const opt = document.createElement("option");
+              opt.value = name;
+              dl.appendChild(opt);
+            });
+          } catch (e) {}
+        });
+      })();
     </script>
   </body>
 </html>

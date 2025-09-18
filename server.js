@@ -2,6 +2,9 @@ const express = require("express");
 const cors = require("cors");
 const OpenAI = require("openai");
 const path = require("path");
+const fs = require("fs"); // [추가 기능] 학교 데이터 파일 로드
+const crypto = require("crypto"); // [추가 기능] QR 서명 및 세션 토큰 생성
+const QRCode = require("qrcode"); // [추가 기능] QR PNG 생성
 require("dotenv").config({ path: "key.env" });
 
 const app = express();
@@ -11,8 +14,10 @@ const port = parseInt(process.env.PORT) || 3000;
 const host = "0.0.0.0"; // Railway는 반드시 0.0.0.0에 바인딩해야 함
 
 console.log(`🚀 Starting server...`);
-console.log(`📍 Environment: ${process.env.NODE_ENV || 'development'}`);
-console.log(`🌐 Railway Static URL: ${process.env.RAILWAY_STATIC_URL || 'not set'}`);
+console.log(`📍 Environment: ${process.env.NODE_ENV || "development"}`);
+console.log(
+  `🌐 Railway Static URL: ${process.env.RAILWAY_STATIC_URL || "not set"}`
+);
 console.log(`🔧 Host: ${host}, Port: ${port}`);
 
 // CORS 설정 - Railway 환경을 위한 더 관대한 설정
@@ -42,10 +47,74 @@ app.use((req, res, next) => {
 // 실행 디렉터리 변화에 영향을 받지 않도록 절대경로 기반으로 서빙
 app.use(express.static(path.join(__dirname)));
 
+// [추가 기능] 간단한 쿠키 파서 및 관리자 세션 관리
+const adminSessions = new Map(); // sessionId -> { expiresAt }
+function parseCookies(cookieHeader) {
+  const list = {};
+  if (!cookieHeader) return list;
+  cookieHeader.split(";").forEach(function (cookie) {
+    const parts = cookie.split("=");
+    const key = parts.shift().trim();
+    const value = decodeURIComponent(parts.join("="));
+    list[key] = value;
+  });
+  return list;
+}
+// [개선된 인증] 교사별 개별 인증 + 기존 글로벌 관리자 인증 병행
+const teacherSessions = new Map(); // classCode -> { pin, sessionId, expiresAt }
+
+function isAdminAuthenticated(req) {
+  const cookies = parseCookies(req.headers.cookie || "");
+  const sessionId = cookies["admin_session"];
+  if (!sessionId) return false;
+  const session = adminSessions.get(sessionId);
+  if (!session) return false;
+  if (session.expiresAt < Date.now()) {
+    adminSessions.delete(sessionId);
+    return false;
+  }
+  return true;
+}
+
+function isTeacherAuthenticated(req) {
+  const { classCode, pin } = req.body || req.query;
+  if (!classCode || !pin) return false;
+
+  const teacherSession = teacherSessions.get(classCode);
+  if (!teacherSession || teacherSession.pin !== pin) return false;
+
+  // 세션 만료 확인 (24시간)
+  if (teacherSession.expiresAt < Date.now()) {
+    teacherSessions.delete(classCode);
+    return false;
+  }
+
+  return true;
+}
+
+function requireAdminAuth(req, res) {
+  // 1순위: 교사 인증 확인
+  if (isTeacherAuthenticated(req)) {
+    return null; // 통과
+  }
+
+  // 2순위: 글로벌 관리자 인증 확인 (백업용)
+  if (isAdminAuthenticated(req)) {
+    return null; // 통과
+  }
+
+  return res.status(401).json({
+    success: false,
+    error: "인증이 필요합니다. 학급 코드와 PIN을 확인해주세요.",
+  });
+}
+
 // Railway V2 호환 헬스체크 (즉시 응답)
 app.get("/healthz", (req, res) => {
-  console.log(`🏥 Health check requested from ${req.ip || req.connection.remoteAddress}`);
-  res.status(200).type('text/plain').send("OK");
+  console.log(
+    `🏥 Health check requested from ${req.ip || req.connection.remoteAddress}`
+  );
+  res.status(200).type("text/plain").send("OK");
 });
 
 app.get("/health", (req, res) => {
@@ -54,12 +123,267 @@ app.get("/health", (req, res) => {
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
     port: port,
-    host: host
+    host: host,
   });
 });
 
 app.get("/ping", (req, res) => {
-  res.status(200).type('text/plain').send("pong");
+  res.status(200).type("text/plain").send("pong");
+});
+
+// [추가 기능] 전국 학교 데이터 로딩/가공 (초등학교만)
+let schoolsMapCache = null; // 캐시 초기화 // [{ region_code, region_name, schools: [{school_code, school_name}] }]
+function normalizeRegionName(name) {
+  if (!name) return "기타";
+  return name
+    .replace("특별시", "")
+    .replace("광역시", "")
+    .replace("특별자치시", "")
+    .replace("특별자치도", "")
+    .replace("자치도", "")
+    .replace("도", "")
+    .trim();
+}
+function buildMapFromArray(rows) {
+  const byRegion = new Map();
+  for (const row of rows) {
+    const level = row["학교급구분"] || row["학교급"] || "";
+    if (!String(level).includes("초등")) continue;
+    const code =
+      row["표준학교코드"] || row["학교ID"] || row["학교코드"] || null;
+    const name = row["학교명"] || row["학교명칭"] || row["school_name"] || null;
+    if (!name) continue;
+    let region = row["시도교육청명"] || row["시도명"] || row["지역"] || null;
+    if (!region) {
+      const addr = row["소재지도로명주소"] || row["주소"] || "";
+      region = addr.split(" ")[0];
+    }
+    const regionName = normalizeRegionName(region);
+    if (!byRegion.has(regionName)) byRegion.set(regionName, new Map());
+    const schools = byRegion.get(regionName);
+    const schoolCode = code || `${regionName}-${name}`;
+    schools.set(schoolCode, name);
+  }
+  // to array
+  const result = [];
+  for (const [regionName, schools] of byRegion) {
+    const list = Array.from(schools.entries())
+      .map(([school_code, school_name]) => ({ school_code, school_name }))
+      .sort((a, b) => a.school_name.localeCompare(b.school_name, "ko"));
+    result.push({
+      region_code: regionName,
+      region_name: regionName,
+      schools: list,
+    });
+  }
+  result.sort((a, b) => a.region_name.localeCompare(b.region_name, "ko"));
+  return result;
+}
+
+// 가공된 데이터 형식 {"지역": ["학교1", "학교2"]} 을 표준 형식으로 변환
+function buildMapFromProcessedData(processedData) {
+  const result = [];
+  const regionMapping = {
+    서울: "서울특별시",
+    부산: "부산광역시",
+    대구: "대구광역시",
+    인천: "인천광역시",
+    광주: "광주광역시",
+    대전: "대전광역시",
+    울산: "울산광역시",
+    세종: "세종특별자치시",
+    경기: "경기도",
+    강원: "강원특별자치도",
+    충북: "충청북도",
+    충남: "충청남도",
+    전북: "전북특별자치도",
+    전남: "전라남도",
+    경북: "경상북도",
+    경남: "경상남도",
+    제주: "제주특별자치도",
+  };
+
+  for (const [regionCode, schoolNames] of Object.entries(processedData)) {
+    const regionName = regionMapping[regionCode] || regionCode;
+    const schools = schoolNames.map((schoolName, index) => {
+      // 학교 코드 자동 생성 (지역코드 2자리 + 순번)
+      const codePrefix = regionCode.slice(0, 2).toUpperCase();
+      const schoolCode = `${codePrefix}-${String(index + 1).padStart(4, "0")}`;
+      return {
+        school_code: schoolCode,
+        school_name: schoolName,
+      };
+    });
+
+    result.push({
+      region_code: regionCode,
+      region_name: regionName,
+      schools: schools,
+    });
+  }
+
+  // 지역명으로 정렬
+  result.sort((a, b) => a.region_name.localeCompare(b.region_name, "ko"));
+  return result;
+}
+
+function loadSchoolsMap() {
+  if (schoolsMapCache) {
+    console.log("캐시된 학교 데이터 사용");
+    return schoolsMapCache;
+  }
+  console.log("학교 데이터 로드 시작...");
+  // 우선순위: 1) 가공된 파일 2) 전국 원본 파일 3) 샘플 파일
+  // 환경변수 SCHOOLS_SOURCE로 강제 가능: \"processed\" | \"national\" | \"sample\"
+  const prefer = (process.env.SCHOOLS_SOURCE || "").toLowerCase();
+
+  // 1) 가공된 파일 시도 (최우선) - schools_processed.json
+  try {
+    if (prefer === "processed" || prefer === "") {
+      const processedPath = path.join(
+        __dirname,
+        "data",
+        "schools_processed.json"
+      );
+      if (fs.existsSync(processedPath)) {
+        console.log(`가공된 학교 데이터 로드 시도: ${processedPath}`);
+        const txt = fs.readFileSync(processedPath, "utf8");
+        const parsed = JSON.parse(txt);
+
+        // 새로운 형식: {"서울": ["학교1", "학교2"], "부산": [...]}
+        if (typeof parsed === "object" && !Array.isArray(parsed)) {
+          console.log(
+            `가공된 학교 데이터 로드 성공: ${Object.keys(parsed).length}개 지역`
+          );
+          schoolsMapCache = buildMapFromProcessedData(parsed);
+          console.log(`변환된 지역 수: ${schoolsMapCache.length}`);
+          return schoolsMapCache;
+        }
+      }
+    }
+  } catch (e) {
+    console.error("가공된 학교 데이터 파싱 실패:", e);
+  }
+
+  // 2) 전국 원본 파일 시도 (기존 로직 유지)
+  try {
+    if (prefer === "national" || prefer === "") {
+      const altName = "전국초중등학교위치표준데이터.json";
+      const paths = [
+        path.join(__dirname, altName), // 루트
+        path.join(__dirname, "data", altName), // data 폴더
+      ];
+
+      for (const altPath of paths) {
+        if (fs.existsSync(altPath)) {
+          console.log(`전국 학교 데이터 로드 시도: ${altPath}`);
+          const txt = fs.readFileSync(altPath, "utf8");
+          const parsed = JSON.parse(txt); // 대용량일 수 있음
+          if (Array.isArray(parsed)) {
+            console.log(
+              `전국 학교 데이터 로드 성공: ${parsed.length}개 레코드`
+            );
+            schoolsMapCache = buildMapFromArray(parsed);
+            return schoolsMapCache;
+          } else if (parsed && Array.isArray(parsed.data)) {
+            console.log(
+              `전국 학교 데이터 로드 성공: ${parsed.data.length}개 레코드`
+            );
+            schoolsMapCache = buildMapFromArray(parsed.data);
+            return schoolsMapCache;
+          } else if (parsed && Array.isArray(parsed.records)) {
+            console.log(
+              `전국 학교 데이터 로드 성공: ${parsed.records.length}개 레코드`
+            );
+            console.log(
+              "첫 번째 레코드 샘플:",
+              JSON.stringify(parsed.records[0], null, 2)
+            );
+            schoolsMapCache = buildMapFromArray(parsed.records);
+            console.log(`가공된 지역 수: ${schoolsMapCache.length}`);
+            return schoolsMapCache;
+          }
+        }
+      }
+    }
+  } catch (e) {
+    console.error("전국 학교 데이터 파싱 실패:", e);
+  }
+
+  // 3) 샘플 파일 시도
+  try {
+    if (prefer === "sample" || prefer === "") {
+      const jsonPath = path.join(__dirname, "data", "schools.json");
+      if (fs.existsSync(jsonPath)) {
+        const txt = fs.readFileSync(jsonPath, "utf8");
+        const parsed = JSON.parse(txt);
+        if (Array.isArray(parsed)) {
+          schoolsMapCache = parsed;
+          return schoolsMapCache;
+        }
+      }
+    }
+  } catch (e) {
+    console.warn("data/schools.json 로드 실패, 대체 파일 사용 시도", e.message);
+  }
+  // fallback 샘플
+  schoolsMapCache = [
+    {
+      region_code: "서울",
+      region_name: "서울",
+      schools: [
+        { school_code: "SE-0001", school_name: "서울숲초등학교" },
+        { school_code: "SE-0002", school_name: "서울초등학교" },
+      ],
+    },
+  ];
+  return schoolsMapCache;
+}
+function listAllSchoolNames() {
+  const map = loadSchoolsMap();
+  const names = [];
+  map.forEach((r) => r.schools.forEach((s) => names.push(s.school_name)));
+  return names;
+}
+
+// [추가 기능] 가공된 지역/학교 맵 공개 API (학생 등록용)
+app.get("/api/schools-map", (req, res) => {
+  try {
+    const map = loadSchoolsMap();
+    res.json({ success: true, regions: map });
+  } catch (e) {
+    res.status(500).json({ success: false, error: "학교 데이터 로드 실패" });
+  }
+});
+
+// [추가 기능] 학교명 간단 검색 (인증 필요)
+app.get("/api/admin/schools", (req, res) => {
+  const authCheck = requireAdminAuth(req, res);
+  if (authCheck) return;
+  try {
+    const q = (req.query.q || "").toString().trim();
+    if (!q) return res.json({ success: true, schools: [] });
+    const list = listAllSchoolNames()
+      .filter((n) => n.includes(q))
+      .slice(0, 20);
+    res.json({ success: true, schools: list });
+  } catch (e) {
+    res.status(500).json({ success: false, error: "검색 오류" });
+  }
+});
+
+// [추가 기능] 공개 학교 검색 (학생 등록용, 인증 불필요)
+app.get("/api/schools", (req, res) => {
+  try {
+    const q = (req.query.q || "").toString().trim();
+    if (!q) return res.json({ success: true, schools: [] });
+    const list = listAllSchoolNames()
+      .filter((n) => n.includes(q))
+      .slice(0, 20);
+    res.json({ success: true, schools: list });
+  } catch (e) {
+    res.status(500).json({ success: false, error: "검색 오류" });
+  }
 });
 
 // 루트 요청은 명시적으로 index.html 반환 (정적 서빙 보강)
@@ -72,6 +396,56 @@ const studentsData = new Map();
 
 // 학급 코드 저장소 (코드 -> 학급 정보 매핑)
 const classCodes = new Map();
+
+// [추가 기능] QR 토큰/형성평가 저장소 및 오류태그 메타데이터
+const qrTokens = new Map(); // token -> { classCode, exp }
+const interventionsByClass = new Map(); // classCode -> [items]
+const slowCounters = new Map(); // classCode -> studentId -> stage -> {count, lastAt}
+const lastAlerts = new Map(); // classCode -> studentId -> stage -> timestamp
+const heatmapStats = new Map(); // classCode -> stage -> tagKey -> {count}
+
+const ERROR_TAGS = {
+  zeroPadding: {
+    label: "0 채우기 누락",
+    definition: "자릿수를 채울 때 0을 빠뜨림(예: 3만 → 3000)",
+    tip: "끝에서 4자리씩 끊어 0을 채워요. 만은 4자리 블록입니다.",
+  },
+  unitSwitch: {
+    label: "단위 전환 오류(만↔억↔조)",
+    definition: "만/억/조 사이 10,000배 전환을 잘못 이해.",
+    tip: "단위 사다리(만→억→조)를 보며 10,000배씩 이동해요.",
+  },
+  comma: {
+    label: "쉼표 위치 오류",
+    definition: "3·4자리 묶음 규칙을 잘못 적용(예: 10,00,000)",
+    tip: "숫자를 오른쪽에서 3자리(혹은 큰 수 표기 규칙)에 맞춰 끊어요.",
+  },
+  placeValue: {
+    label: "자릿값 혼동",
+    definition: "특정 자리(천/만/억 등)의 값 의미를 혼동.",
+    tip: "자리값표로 각 자리의 값을 확인해요.",
+  },
+  magnitude: {
+    label: "규모감/근사 감각 부족",
+    definition: "수의 크기 감(근사)이 부족하여 100만↔1억 혼동.",
+    tip: "수직선/도표로 크기를 비교해 보아요.",
+  },
+  compareSign: {
+    label: "비교 기호/규칙 오류",
+    definition: ">, < 방향/자리수 우선 규칙을 오해.",
+    tip: "자리수 먼저 비교하고 같으면 다음 자리로!",
+  },
+  skipCounting: {
+    label: "뛰어세기 규칙 오류",
+    definition: "등차/등비 패턴을 식별·적용하지 못함.",
+    tip: "규칙을 말로 설명→적용→검증 3단계로 연습해요.",
+  },
+  wordParsing: {
+    label: "상황문장 해석 오류",
+    definition: "문제 문장에서 필요한 수·단위를 바르게 추출하지 못함.",
+    tip: "키워드를 하이라이트하고 표로 정리해요.",
+  },
+};
 
 // 학생 ID 생성 함수 (학교-학년-반-번호 기반)
 function generateStudentId(schoolName, grade, classNumber, studentNumber) {
@@ -495,6 +869,8 @@ app.get("/api/students", (req, res) => {
 
 // 서버 데이터 초기화 (관리용)
 app.post("/api/admin/reset", (req, res) => {
+  const authCheck = requireAdminAuth(req, res); // [추가 기능] 관리자 인증
+  if (authCheck) return;
   try {
     const { confirmPassword } = req.body;
 
@@ -530,6 +906,8 @@ app.post("/api/admin/reset", (req, res) => {
 
 // 특정 학생 삭제 (관리용)
 app.delete("/api/admin/student/:studentId", (req, res) => {
+  const authCheck = requireAdminAuth(req, res); // [추가 기능] 관리자 인증
+  if (authCheck) return;
   try {
     const { studentId } = req.params;
 
@@ -567,16 +945,140 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-// 관리자 기능 - 학급 현황 조회
-app.post("/api/admin/class-stats", (req, res) => {
+// [추가 기능] 관리자 로그인/세션 확인
+app.post("/api/admin/login", (req, res) => {
   try {
-    const { schoolName, grade, classNumber } = req.body;
+    const { password } = req.body || {};
+    const adminPass = process.env.ADMIN_PASS;
+    if (!adminPass) {
+      return res
+        .status(500)
+        .json({ success: false, error: "서버 ADMIN_PASS 미설정" });
+    }
+    if (password !== adminPass) {
+      return res
+        .status(401)
+        .json({ success: false, error: "비밀번호가 올바르지 않습니다." });
+    }
+    const sessionId = crypto.randomBytes(24).toString("hex");
+    adminSessions.set(sessionId, {
+      expiresAt: Date.now() + 1000 * 60 * 60 * 2,
+    }); // 2시간
+    res.setHeader(
+      "Set-Cookie",
+      `admin_session=${sessionId}; HttpOnly; SameSite=Lax; Max-Age=${
+        60 * 60 * 2
+      }; Path=/`
+    );
+    res.json({ success: true });
+  } catch (error) {
+    console.error("관리자 로그인 오류:", error);
+    res.status(500).json({ success: false, error: "로그인 처리 중 오류" });
+  }
+});
 
-    if (!schoolName || !grade || !classNumber) {
+// 교사 로그인 API (학급 코드 + PIN)
+app.post("/api/admin/teacher-login", (req, res) => {
+  try {
+    const { classCode, pin } = req.body;
+
+    if (!classCode || !pin) {
       return res.status(400).json({
         success: false,
-        error: "학급 정보를 모두 입력해주세요.",
+        error: "학급 코드와 PIN을 모두 입력해주세요.",
       });
+    }
+
+    const teacherSession = teacherSessions.get(classCode);
+    if (!teacherSession || teacherSession.pin !== pin) {
+      return res.status(401).json({
+        success: false,
+        error: "잘못된 학급 코드 또는 PIN입니다.",
+      });
+    }
+
+    // 세션 만료 확인
+    if (teacherSession.expiresAt < Date.now()) {
+      teacherSessions.delete(classCode);
+      return res.status(401).json({
+        success: false,
+        error: "세션이 만료되었습니다. 학급 코드를 다시 생성해주세요.",
+      });
+    }
+
+    // 세션 갱신
+    teacherSession.expiresAt = Date.now() + 24 * 60 * 60 * 1000; // 24시간 연장
+    teacherSession.lastAccess = new Date().toISOString();
+
+    res.json({
+      success: true,
+      message: "로그인 성공",
+      classInfo: {
+        schoolName: teacherSession.schoolName,
+        grade: teacherSession.grade,
+        classNumber: teacherSession.classNumber,
+      },
+    });
+  } catch (error) {
+    console.error("교사 로그인 오류:", error);
+    res
+      .status(500)
+      .json({ success: false, error: "로그인 처리 중 오류가 발생했습니다." });
+  }
+});
+
+app.get("/api/admin/session", (req, res) => {
+  const { classCode, pin } = req.query;
+
+  // 교사 인증 확인
+  if (classCode && pin) {
+    const teacherSession = teacherSessions.get(classCode);
+    if (
+      teacherSession &&
+      teacherSession.pin === pin &&
+      teacherSession.expiresAt > Date.now()
+    ) {
+      return res.json({ success: true, type: "teacher" });
+    }
+  }
+
+  // 글로벌 관리자 인증 확인 (백업용)
+  if (isAdminAuthenticated(req)) {
+    return res.json({ success: true, type: "global" });
+  }
+
+  return res.status(401).json({ success: false });
+});
+
+// 관리자 기능 - 학급 현황 조회
+app.post("/api/admin/class-stats", (req, res) => {
+  const authCheck = requireAdminAuth(req, res); // [추가 기능] 관리자 인증
+  if (authCheck) return;
+  try {
+    let { schoolName, grade, classNumber, classCode, pin } = req.body;
+
+    // [추가 기능] classCode + pin 우선 사용
+    if (classCode) {
+      if (!classCodes.has(classCode)) {
+        return res
+          .status(404)
+          .json({ success: false, error: "유효하지 않은 학급 코드입니다." });
+      }
+      const classInfo = classCodes.get(classCode);
+      if (classInfo.pin && classInfo.pin !== pin) {
+        return res
+          .status(403)
+          .json({ success: false, error: "학급 PIN이 올바르지 않습니다." });
+      }
+      schoolName = classInfo.schoolName;
+      grade = classInfo.grade;
+      classNumber = classInfo.classNumber;
+    } else {
+      if (!schoolName || !grade || !classNumber) {
+        return res
+          .status(400)
+          .json({ success: false, error: "학급 정보를 모두 입력해주세요." });
+      }
     }
 
     // 해당 학급 학생들 필터링
@@ -626,15 +1128,269 @@ app.post("/api/admin/class-stats", (req, res) => {
   }
 });
 
-// 관리자 기능 - 학급 코드 생성 API
-app.post("/api/admin/create-class-code", (req, res) => {
+// [추가 기능] 형성평가 텔레메트리 수집
+app.post("/api/telemetry", (req, res) => {
   try {
-    const { classCode, schoolName, grade, classNumber } = req.body;
+    const {
+      classId,
+      studentId,
+      studentNumber,
+      studentName,
+      stage,
+      problemId,
+      elapsed,
+      slow,
+      correct,
+      help,
+      errorTags,
+    } = req.body || {};
 
-    if (!classCode || !schoolName || !grade || !classNumber) {
+    const classCode = classId;
+    if (!classCode || typeof stage === "undefined") {
+      return res.status(400).json({ success: false, error: "필수 필드 누락" });
+    }
+
+    // 히트맵 집계
+    if (!heatmapStats.has(classCode)) heatmapStats.set(classCode, new Map());
+    const classMap = heatmapStats.get(classCode);
+    const stageKey = String(stage);
+    if (!classMap.has(stageKey)) classMap.set(stageKey, new Map());
+    const stageMap = classMap.get(stageKey);
+    const tags = Array.isArray(errorTags) ? errorTags : [];
+    const totalKey = "__total__";
+    const totalObj = stageMap.get(totalKey) || { count: 0 };
+    totalObj.count += 1;
+    stageMap.set(totalKey, totalObj);
+    tags.forEach((t) => {
+      if (!stageMap.has(t)) stageMap.set(t, { count: 0 });
+      const obj = stageMap.get(t);
+      obj.count += 1;
+      stageMap.set(t, obj);
+    });
+
+    // 개입 알림 로직
+    if (!interventionsByClass.has(classCode))
+      interventionsByClass.set(classCode, []);
+    if (!slowCounters.has(classCode)) slowCounters.set(classCode, new Map());
+    const classSlow = slowCounters.get(classCode);
+    if (!classSlow.has(studentId)) classSlow.set(studentId, new Map());
+    const studentSlow = classSlow.get(studentId);
+    if (!studentSlow.has(stageKey))
+      studentSlow.set(stageKey, { count: 0, lastAt: 0 });
+    const s = studentSlow.get(stageKey);
+    const now = Date.now();
+
+    let reason = null;
+    if (help === true) {
+      reason = "도움요청";
+    } else if (slow === true) {
+      s.count += 1;
+      s.lastAt = now;
+      if (s.count >= 2) {
+        reason = correct === false ? "지연+오답" : "지연";
+        s.count = 0; // 한 번 알림 후 리셋
+      }
+    } else {
+      s.count = 0;
+    }
+    studentSlow.set(stageKey, s);
+
+    if (reason) {
+      if (!lastAlerts.has(classCode)) lastAlerts.set(classCode, new Map());
+      const laClass = lastAlerts.get(classCode);
+      if (!laClass.has(studentId)) laClass.set(studentId, new Map());
+      const laStudent = laClass.get(studentId);
+      const lastTs = laStudent.get(stageKey) || 0;
+      if (now - lastTs > 60000) {
+        const item = {
+          studentNumber,
+          studentName,
+          studentId,
+          stage,
+          elapsed: elapsed || 0,
+          reason,
+          errorTags: Array.isArray(errorTags) ? errorTags : [],
+          at: now,
+        };
+        const arr = interventionsByClass.get(classCode);
+        arr.unshift(item);
+        if (arr.length > 100) arr.length = 100;
+        laStudent.set(stageKey, now);
+      }
+    }
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error("텔레메트리 수집 오류:", error);
+    res.status(500).json({ success: false, error: "수집 오류" });
+  }
+});
+
+// [추가 기능] 개입 알림 조회 (폴링)
+app.get("/api/admin/interventions", (req, res) => {
+  const authCheck = requireAdminAuth(req, res);
+  if (authCheck) return;
+  try {
+    const { classCode, pin } = req.query;
+    if (!classCode || !classCodes.has(classCode)) {
+      return res
+        .status(400)
+        .json({ success: false, error: "유효한 학급 코드가 필요합니다." });
+    }
+    const classInfo = classCodes.get(classCode);
+    if (classInfo.pin && classInfo.pin !== pin) {
+      return res
+        .status(403)
+        .json({ success: false, error: "학급 PIN이 올바르지 않습니다." });
+    }
+    res.json({
+      success: true,
+      items: interventionsByClass.get(classCode) || [],
+    });
+  } catch (error) {
+    console.error("개입 알림 조회 오류:", error);
+    res.status(500).json({ success: false, error: "조회 오류" });
+  }
+});
+
+// [추가 기능] 히트맵 데이터 조회
+app.get("/api/admin/heatmap", (req, res) => {
+  const authCheck = requireAdminAuth(req, res);
+  if (authCheck) return;
+  try {
+    const { classCode, pin } = req.query;
+    if (!classCode || !classCodes.has(classCode)) {
+      return res
+        .status(400)
+        .json({ success: false, error: "유효한 학급 코드가 필요합니다." });
+    }
+    const classInfo = classCodes.get(classCode);
+    if (classInfo.pin && classInfo.pin !== pin) {
+      return res
+        .status(403)
+        .json({ success: false, error: "학급 PIN이 올바르지 않습니다." });
+    }
+    const classMap = heatmapStats.get(classCode) || new Map();
+    const stages = Array.from(classMap.keys()).sort(
+      (a, b) => Number(a) - Number(b)
+    );
+    const tags = Object.keys(ERROR_TAGS);
+    const rows = stages.map((stageKey) => {
+      const stageMap = classMap.get(stageKey) || new Map();
+      const total = (stageMap.get("__total__") || { count: 0 }).count;
+      const rates = {};
+      tags.forEach((t) => {
+        const cnt = (stageMap.get(t) || { count: 0 }).count;
+        const pct = total > 0 ? Math.round((cnt / total) * 100) : 0;
+        rates[t] = { count: cnt, total, rate: pct };
+      });
+      return { stage: stageKey, rates };
+    });
+    res.json({ success: true, tags: ERROR_TAGS, rows });
+  } catch (error) {
+    console.error("히트맵 조회 오류:", error);
+    res.status(500).json({ success: false, error: "조회 오류" });
+  }
+});
+
+// 교사 코드 검증 API
+app.post("/api/admin/verify-teacher-code", (req, res) => {
+  try {
+    const { teacherCode } = req.body;
+
+    if (!teacherCode) {
       return res.status(400).json({
         success: false,
-        error: "모든 정보를 입력해주세요.",
+        error: "교사 코드를 입력해주세요.",
+      });
+    }
+
+    // 환경변수에서 유효한 교사 코드 목록 가져오기
+    const validCodes = (process.env.TEACHER_CODES || "")
+      .split(",")
+      .map((code) => code.trim());
+
+    if (!validCodes.includes(teacherCode)) {
+      return res.status(401).json({
+        success: false,
+        error:
+          "유효하지 않은 교사 코드입니다. 교육청에서 배포한 코드를 확인해주세요.",
+      });
+    }
+
+    // 교사 코드에서 지역 정보 추출
+    const region = teacherCode.split("_")[0];
+    const regionNames = {
+      SEOUL: "서울특별시",
+      BUSAN: "부산광역시",
+      DAEGU: "대구광역시",
+      INCHEON: "인천광역시",
+      GWANGJU: "광주광역시",
+      DAEJEON: "대전광역시",
+      ULSAN: "울산광역시",
+      SEJONG: "세종특별자치시",
+      GYEONGGI: "경기도",
+      GANGWON: "강원특별자치도",
+      CHUNGBUK: "충청북도",
+      CHUNGNAM: "충청남도",
+      JEONBUK: "전북특별자치도",
+      JEONNAM: "전라남도",
+      GYEONGBUK: "경상북도",
+      GYEONGNAM: "경상남도",
+      JEJU: "제주특별자치도",
+    };
+
+    res.json({
+      success: true,
+      message: "교사 코드 인증 성공",
+      region: region,
+      regionName: regionNames[region] || region,
+    });
+  } catch (error) {
+    console.error("교사 코드 검증 오류:", error);
+    res
+      .status(500)
+      .json({ success: false, error: "인증 처리 중 오류가 발생했습니다." });
+  }
+});
+
+// 관리자 기능 - 학급 코드 생성 API (교사 세션 등록 포함)
+app.post("/api/admin/create-class-code", (req, res) => {
+  try {
+    const { classCode, schoolName, grade, classNumber, pin, teacherCode } =
+      req.body;
+
+    if (
+      !classCode ||
+      !schoolName ||
+      !grade ||
+      !classNumber ||
+      !pin ||
+      !teacherCode
+    ) {
+      return res.status(400).json({
+        success: false,
+        error:
+          "학급 코드, 학교명, 학년, 반, PIN, 교사 코드를 모두 입력해주세요.",
+      });
+    }
+
+    // 교사 코드 검증
+    const validCodes = (process.env.TEACHER_CODES || "")
+      .split(",")
+      .map((code) => code.trim());
+    if (!validCodes.includes(teacherCode)) {
+      return res.status(401).json({
+        success: false,
+        error: "유효하지 않은 교사 코드입니다.",
+      });
+    }
+
+    // PIN 검증 (6자리 숫자)
+    if (!/^\d{6}$/.test(pin)) {
+      return res.status(400).json({
+        success: false,
+        error: "PIN은 6자리 숫자여야 합니다.",
       });
     }
 
@@ -643,7 +1399,20 @@ app.post("/api/admin/create-class-code", (req, res) => {
       schoolName,
       grade,
       classNumber,
+      pin: pin,
       createdAt: new Date().toISOString(),
+    });
+
+    // 교사 세션 등록 (24시간 유효)
+    teacherSessions.set(classCode, {
+      pin: pin,
+      sessionId: generateSessionId(),
+      expiresAt: Date.now() + 24 * 60 * 60 * 1000, // 24시간
+      createdAt: new Date().toISOString(),
+      schoolName: schoolName,
+      grade: grade,
+      classNumber: classNumber,
+      teacherCode: teacherCode, // 교사 코드 저장
     });
 
     console.log(
@@ -661,6 +1430,98 @@ app.post("/api/admin/create-class-code", (req, res) => {
       success: false,
       error: "학급 코드 생성 중 오류가 발생했습니다.",
     });
+  }
+});
+
+// [추가 기능] QR 토큰 생성 API
+app.post("/api/admin/qr-token", (req, res) => {
+  const authCheck = requireAdminAuth(req, res);
+  if (authCheck) return;
+  try {
+    const { classCode, pin, expiresInSec } = req.body || {};
+    if (!classCode || !classCodes.has(classCode)) {
+      return res
+        .status(400)
+        .json({ success: false, error: "유효한 학급 코드가 필요합니다." });
+    }
+    const classInfo = classCodes.get(classCode);
+    if (classInfo.pin && classInfo.pin !== pin) {
+      return res
+        .status(403)
+        .json({ success: false, error: "학급 PIN이 올바르지 않습니다." });
+    }
+    const exp = Date.now() + 1000 * (expiresInSec || 60 * 60 * 24 * 7);
+    const payload = `${classCode}|${exp}`;
+    const secret = process.env.QR_SECRET || "dev-secret";
+    const sig = crypto
+      .createHmac("sha256", secret)
+      .update(payload)
+      .digest("hex");
+    const token = Buffer.from(`${classCode}|${exp}|${sig}`).toString(
+      "base64url"
+    );
+    qrTokens.set(token, { classCode, exp });
+    const hostUrl = process.env.RAILWAY_STATIC_URL
+      ? `https://${process.env.RAILWAY_STATIC_URL}`
+      : `http://localhost:${port}`;
+    const shortUrl = `${hostUrl}/r/${token}`;
+    res.json({ success: true, token, shortUrl, exp });
+  } catch (error) {
+    console.error("QR 토큰 생성 오류:", error);
+    res.status(500).json({ success: false, error: "QR 토큰 생성 중 오류" });
+  }
+});
+
+// [추가 기능] QR PNG 생성
+app.get("/api/admin/qr.png", async (req, res) => {
+  const authCheck = requireAdminAuth(req, res);
+  if (authCheck) return;
+  try {
+    const { token } = req.query;
+    if (!token) return res.status(400).send("token 필요");
+    const hostUrl = process.env.RAILWAY_STATIC_URL
+      ? `https://${process.env.RAILWAY_STATIC_URL}`
+      : `http://localhost:${port}`;
+    const url = `${hostUrl}/r/${token}`;
+    const buf = await QRCode.toBuffer(url, {
+      type: "png",
+      width: 320,
+      margin: 2,
+    });
+    res.setHeader("Content-Type", "image/png");
+    res.send(buf);
+  } catch (error) {
+    console.error("QR PNG 생성 오류:", error);
+    res.status(500).send("QR 생성 오류");
+  }
+});
+
+// [추가 기능] 짧은 URL 리다이렉트
+app.get("/r/:token", (req, res) => {
+  try {
+    const token = req.params.token;
+    const decoded = Buffer.from(token, "base64url").toString("utf8");
+    const [classCode, expStr, sig] = decoded.split("|");
+    const exp = parseInt(expStr, 10);
+    if (!classCode || !exp || !sig)
+      return res.redirect("/student-register.html?error=invalid");
+    const secret = process.env.QR_SECRET || "dev-secret";
+    const expectedSig = crypto
+      .createHmac("sha256", secret)
+      .update(`${classCode}|${exp}`)
+      .digest("hex");
+    if (expectedSig !== sig)
+      return res.redirect("/student-register.html?error=invalid");
+    if (Date.now() > exp)
+      return res.redirect("/student-register.html?error=expired");
+    return res.redirect(
+      `/student-register.html?classCode=${encodeURIComponent(
+        classCode
+      )}&exp=${exp}`
+    );
+  } catch (error) {
+    console.error("리다이렉트 오류:", error);
+    return res.redirect("/student-register.html?error=invalid");
   }
 });
 
@@ -792,30 +1653,34 @@ app.post("/chat", async (req, res) => {
 // Railway V2 호환 서버 시작 (즉시 바인딩)
 const server = app.listen(port, () => {
   const address = server.address();
-  console.log(`✅ 서버가 ${address.address}:${address.port}에서 실행 중입니다.`);
-  console.log(`🌍 Railway 환경: ${process.env.RAILWAY_ENVIRONMENT || 'local'}`);
-  console.log(`🔗 Public URL: ${process.env.RAILWAY_STATIC_URL || 'localhost'}`);
+  console.log(
+    `✅ 서버가 ${address.address}:${address.port}에서 실행 중입니다.`
+  );
+  console.log(`🌍 Railway 환경: ${process.env.RAILWAY_ENVIRONMENT || "local"}`);
+  console.log(
+    `🔗 Public URL: ${process.env.RAILWAY_STATIC_URL || "localhost"}`
+  );
   console.log(`🏥 Health endpoints: /healthz, /health, /ping`);
-  
+
   // Railway에 즉시 준비 완료 신호
   if (process.send) {
-    process.send('ready');
+    process.send("ready");
   }
 });
 
 // Railway의 graceful shutdown 지원
-process.on('SIGTERM', () => {
-  console.log('🛑 SIGTERM 수신, graceful shutdown 시작...');
+process.on("SIGTERM", () => {
+  console.log("🛑 SIGTERM 수신, graceful shutdown 시작...");
   server.close(() => {
-    console.log('✅ 서버 종료 완료');
+    console.log("✅ 서버 종료 완료");
     process.exit(0);
   });
 });
 
-process.on('SIGINT', () => {
-  console.log('🛑 SIGINT 수신, graceful shutdown 시작...');
+process.on("SIGINT", () => {
+  console.log("🛑 SIGINT 수신, graceful shutdown 시작...");
   server.close(() => {
-    console.log('✅ 서버 종료 완료');
+    console.log("✅ 서버 종료 완료");
     process.exit(0);
   });
 });

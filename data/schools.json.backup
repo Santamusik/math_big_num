@@ -1,0 +1,23 @@
+[
+  {
+    "region_code": "11",
+    "region_name": "서울",
+    "schools": [
+      { "school_code": "SE-0001", "school_name": "서울숲초등학교" },
+      { "school_code": "SE-0002", "school_name": "서울초등학교" }
+    ]
+  },
+  {
+    "region_code": "30",
+    "region_name": "대전",
+    "schools": [
+      { "school_code": "DJ-0001", "school_name": "대전대암초등학교" },
+      { "school_code": "DJ-0002", "school_name": "대전가온초등학교" }
+    ]
+  },
+  {
+    "region_code": "26",
+    "region_name": "부산",
+    "schools": [{ "school_code": "BS-0001", "school_name": "부산바다초등학교" }]
+  }
+]
