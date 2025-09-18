@@ -343,7 +343,7 @@
             <!-- [추가 기능] 학급 PIN 입력 -->
             <div class="form-group" style="margin-top: 10px">
               <label>학급 PIN(6자리, 관리자만 보임)</label>
-              <div style="display: flex; gap: 10px;">
+              <div style="display: flex; gap: 10px">
                 <input
                   type="password"
                   id="classPin"
@@ -351,13 +351,17 @@
                   class="login-input"
                   aria-label="학급 PIN 입력"
                   placeholder="예: 123456"
-                  style="flex: 1;"
+                  style="flex: 1"
                 />
-                <button class="btn-secondary" id="changePinBtn" style="display: none; white-space: nowrap;">
+                <button
+                  class="btn-secondary"
+                  id="changePinBtn"
+                  style="display: none; white-space: nowrap"
+                >
                   PIN 변경
                 </button>
               </div>
-              <div style="font-size: 11px; color: #666; margin-top: 5px;">
+              <div style="font-size: 11px; color: #666; margin-top: 5px">
                 💡 학급 생성 후에도 PIN을 변경할 수 있습니다.
               </div>
             </div>
@@ -735,12 +739,20 @@
           const schoolName = document.getElementById("schoolName").value;
           const grade = document.getElementById("grade").value;
           const classNumber = document.getElementById("classNumber").value;
-          currentPin = (document.getElementById("classPin").value || "").trim(); // [추가 기능]
+          const pinInput = (document.getElementById("classPin").value || "").trim(); // [추가 기능]
 
           if (!schoolName || !grade || !classNumber) {
             alert("학교명, 학년, 반을 모두 입력해주세요.");
             return;
           }
+
+          // PIN 검증 - 6자리 숫자 필수
+          if (!pinInput || pinInput.length !== 6 || !/^\d{6}$/.test(pinInput)) {
+            alert("6자리 숫자로 PIN을 입력해주세요.");
+            return;
+          }
+
+          currentPin = pinInput;
 
           // 학급 코드 생성 (학교명 2글자 + 학년 + 반 + 랜덤 4자리)
           const schoolCode = schoolName.slice(0, 2);
@@ -765,7 +777,7 @@
                 schoolName: schoolName,
                 grade: parseInt(grade),
                 classNumber: parseInt(classNumber),
-                pin: currentPin || null,
+                pin: currentPin,
                 teacherCode: currentTeacherCode, // 교사 코드 추가
               }),
             });
@@ -807,47 +819,49 @@
         });
 
       // PIN 변경 기능
-      document.getElementById("changePinBtn").addEventListener("click", async function () {
-        const newPin = document.getElementById("classPin").value.trim();
-        
-        if (!newPin || newPin.length !== 6 || !/^\d{6}$/.test(newPin)) {
-          alert("6자리 숫자로 PIN을 입력해주세요.");
-          return;
-        }
+      document
+        .getElementById("changePinBtn")
+        .addEventListener("click", async function () {
+          const newPin = document.getElementById("classPin").value.trim();
 
-        if (!currentClassInfo || !currentClassInfo.classCode) {
-          alert("먼저 학급 코드를 생성해주세요.");
-          return;
-        }
-
-        try {
-          const response = await fetch("/api/admin/change-pin", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              classCode: currentClassInfo.classCode,
-              oldPin: currentPin,
-              newPin: newPin,
-              teacherCode: currentTeacherCode,
-            }),
-          });
-
-          const data = await response.json();
-          if (data.success) {
-            currentPin = newPin;
-            currentTeacherAuth.pin = newPin;
-            alert("PIN이 성공적으로 변경되었습니다!");
-            showToast("PIN 변경 완료");
-          } else {
-            alert("PIN 변경 실패: " + data.error);
+          if (!newPin || newPin.length !== 6 || !/^\d{6}$/.test(newPin)) {
+            alert("6자리 숫자로 PIN을 입력해주세요.");
+            return;
           }
-        } catch (error) {
-          console.error("PIN 변경 오류:", error);
-          alert("PIN 변경 중 오류가 발생했습니다.");
-        }
-      });
+
+          if (!currentClassInfo || !currentClassInfo.classCode) {
+            alert("먼저 학급 코드를 생성해주세요.");
+            return;
+          }
+
+          try {
+            const response = await fetch("/api/admin/change-pin", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                classCode: currentClassInfo.classCode,
+                oldPin: currentPin,
+                newPin: newPin,
+                teacherCode: currentTeacherCode,
+              }),
+            });
+
+            const data = await response.json();
+            if (data.success) {
+              currentPin = newPin;
+              currentTeacherAuth.pin = newPin;
+              alert("PIN이 성공적으로 변경되었습니다!");
+              showToast("PIN 변경 완료");
+            } else {
+              alert("PIN 변경 실패: " + data.error);
+            }
+          } catch (error) {
+            console.error("PIN 변경 오류:", error);
+            alert("PIN 변경 중 오류가 발생했습니다.");
+          }
+        });
 
       // 코드 복사
       document
@@ -885,16 +899,16 @@
 
           const data = await response.json();
 
-        if (data.success) {
-          updateStats(data.stats);
-          updateStudentsTable(data.students);
-          // 기존 학급이 있으면 PIN 변경 버튼 표시
-          if (currentClassInfo && currentClassInfo.classCode) {
-            document.getElementById("changePinBtn").style.display = "block";
+          if (data.success) {
+            updateStats(data.stats);
+            updateStudentsTable(data.students);
+            // 기존 학급이 있으면 PIN 변경 버튼 표시
+            if (currentClassInfo && currentClassInfo.classCode) {
+              document.getElementById("changePinBtn").style.display = "block";
+            }
+          } else {
+            console.error("현황 조회 실패:", data.error);
           }
-        } else {
-          console.error("현황 조회 실패:", data.error);
-        }
         } catch (error) {
           console.error("현황 조회 오류:", error);
         }
