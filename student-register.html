@@ -129,10 +129,50 @@
           </div>
 
           <div class="form-group">
-            <label for="schoolSelect">학교</label>
-            <select id="schoolSelect" aria-label="학교 선택" required disabled>
-              <option value="">입력해주세요</option>
-            </select>
+            <label for="schoolName">학교명</label>
+            <div class="search-container" style="position: relative">
+              <input
+                type="text"
+                id="schoolName"
+                name="school_name"
+                placeholder="학교명을 입력하세요 (예: 서울초등학교, 부산초등학교)"
+                aria-label="학교명 검색"
+                autocomplete="off"
+                required
+                style="
+                  width: 100%;
+                  padding: 12px;
+                  border: 2px solid #ddd;
+                  border-radius: 8px;
+                  font-size: 16px;
+                "
+              />
+              <div
+                id="schoolDropdown"
+                class="school-dropdown"
+                style="
+                  display: none;
+                  position: absolute;
+                  top: 100%;
+                  left: 0;
+                  right: 0;
+                  background: white;
+                  border: 2px solid #4caf50;
+                  border-top: none;
+                  border-radius: 0 0 8px 8px;
+                  max-height: 200px;
+                  overflow-y: auto;
+                  z-index: 1000;
+                  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+                "
+              ></div>
+            </div>
+            <div
+              id="schoolSearchHint"
+              style="font-size: 12px; color: #666; margin-top: 5px"
+            >
+              💡 학교명의 일부만 입력해도 검색됩니다 (최소 2글자)
+            </div>
             <input type="hidden" id="schoolCode" name="school_code" />
           </div>
 
@@ -230,9 +270,13 @@
       // [추가 기능] 지역/학교 JSON 로드 및 바인딩
       let SCHOOL_DATA = [];
       const regionSelect = document.getElementById("regionSelect");
-      const schoolSelect = document.getElementById("schoolSelect");
+      const schoolNameInput = document.getElementById("schoolName");
+      const schoolDropdown = document.getElementById("schoolDropdown");
       const schoolCodeInput = document.getElementById("schoolCode");
       const registerBtn = document.getElementById("registerBtn");
+      
+      let searchTimeout = null;
+      let selectedIndex = -1;
 
       async function loadSchools() {
         try {
@@ -252,36 +296,164 @@
         }
       }
 
-      regionSelect.addEventListener("change", () => {
-        schoolCodeInput.value = "";
-        registerBtn.disabled = true;
-        const code = regionSelect.value;
-        const region = SCHOOL_DATA.find((r) => r.region_code === code);
-        if (!region) {
-          schoolSelect.innerHTML = '<option value="">입력해주세요</option>';
-          schoolSelect.disabled = true;
+      // 학교 검색 함수 (공개 API 사용)
+      async function searchSchools(query) {
+        if (!query || query.length < 2) {
+          schoolDropdown.style.display = "none";
           return;
         }
-        schoolSelect.disabled = false;
-        schoolSelect.innerHTML =
-          '<option value="">선택</option>' +
-          region.schools
-            .map(
-              (s) =>
-                `<option value="${s.school_code}">${s.school_name}</option>`
-            )
-            .join("");
+
+        try {
+          const r = await fetch(`/api/schools?q=${encodeURIComponent(query)}`);
+          if (!r.ok) return;
+          const data = await r.json();
+          
+          if (data.schools && data.schools.length > 0) {
+            showSchoolDropdown(data.schools, query);
+          } else {
+            schoolDropdown.innerHTML = '<div style="padding: 12px; color: #666; text-align: center;">검색 결과가 없습니다</div>';
+            schoolDropdown.style.display = "block";
+          }
+        } catch (e) {
+          console.error("학교 검색 오류:", e);
+          schoolDropdown.style.display = "none";
+        }
+      }
+
+      // 드롭다운 표시 함수
+      function showSchoolDropdown(schools, query) {
+        schoolDropdown.innerHTML = "";
+        selectedIndex = -1;
+
+        schools.forEach((schoolName, index) => {
+          const item = document.createElement("div");
+          item.style.cssText = `
+            padding: 12px 16px;
+            cursor: pointer;
+            border-bottom: 1px solid #f0f0f0;
+            transition: background-color 0.2s;
+          `;
+          
+          // 검색어 하이라이트
+          const highlightedName = schoolName.replace(
+            new RegExp(`(${query})`, "gi"),
+            '<span style="background: #fff3cd; font-weight: bold;">$1</span>'
+          );
+          item.innerHTML = highlightedName;
+          
+          // 마우스 이벤트
+          item.addEventListener("mouseenter", () => {
+            clearSelection();
+            item.style.backgroundColor = "#e8f5e8";
+            selectedIndex = index;
+          });
+          
+          item.addEventListener("mouseleave", () => {
+            item.style.backgroundColor = "transparent";
+          });
+          
+          // 클릭 이벤트
+          item.addEventListener("click", () => {
+            selectSchool(schoolName);
+          });
+          
+          schoolDropdown.appendChild(item);
+        });
+        
+        schoolDropdown.style.display = "block";
+      }
+
+      // 학교 선택 함수
+      function selectSchool(schoolName) {
+        schoolNameInput.value = schoolName;
+        schoolDropdown.style.display = "none";
+        selectedIndex = -1;
+        
+        // 학교 코드 설정
+        schoolCodeInput.value = schoolName;
+        
+        document.getElementById("schoolSearchHint").innerHTML = 
+          `✅ <span style="color: #4caf50; font-weight: bold;">${schoolName}</span>이(가) 선택되었습니다`;
+        
+        // 등록 버튼 활성화
+        registerBtn.disabled = false;
+      }
+
+      // 선택 상태 초기화
+      function clearSelection() {
+        const items = schoolDropdown.children;
+        for (let item of items) {
+          item.style.backgroundColor = "transparent";
+        }
+      }
+
+      // 키보드 네비게이션
+      schoolNameInput.addEventListener("keydown", (e) => {
+        const items = schoolDropdown.children;
+        if (schoolDropdown.style.display === "none" || items.length === 0) return;
+
+        switch (e.key) {
+          case "ArrowDown":
+            e.preventDefault();
+            selectedIndex = Math.min(selectedIndex + 1, items.length - 1);
+            updateSelection();
+            break;
+          case "ArrowUp":
+            e.preventDefault();
+            selectedIndex = Math.max(selectedIndex - 1, -1);
+            updateSelection();
+            break;
+          case "Enter":
+            e.preventDefault();
+            if (selectedIndex >= 0 && selectedIndex < items.length) {
+              const schoolName = items[selectedIndex].textContent;
+              selectSchool(schoolName);
+            }
+            break;
+          case "Escape":
+            schoolDropdown.style.display = "none";
+            selectedIndex = -1;
+            break;
+        }
       });
 
-      schoolSelect.addEventListener("change", () => {
-        const code = schoolSelect.value;
-        if (!code) {
+      // 선택 상태 업데이트
+      function updateSelection() {
+        clearSelection();
+        const items = schoolDropdown.children;
+        if (selectedIndex >= 0 && selectedIndex < items.length) {
+          items[selectedIndex].style.backgroundColor = "#e8f5e8";
+        }
+      }
+
+      // 입력 이벤트
+      schoolNameInput.addEventListener("input", (e) => {
+        const query = e.target.value.trim();
+        
+        // 힌트 텍스트 업데이트
+        if (query.length === 0) {
+          document.getElementById("schoolSearchHint").innerHTML = 
+            "💡 학교명의 일부만 입력해도 검색됩니다 (최소 2글자)";
           schoolCodeInput.value = "";
           registerBtn.disabled = true;
-          return;
+        } else if (query.length === 1) {
+          document.getElementById("schoolSearchHint").innerHTML = 
+            "🔍 한 글자 더 입력하면 검색이 시작됩니다";
         }
-        schoolCodeInput.value = code;
-        registerBtn.disabled = false;
+        
+        // 디바운싱으로 성능 최적화
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(() => {
+          searchSchools(query);
+        }, 300);
+      });
+
+      // 외부 클릭 시 드롭다운 숨기기
+      document.addEventListener("click", (e) => {
+        if (!schoolNameInput.contains(e.target) && !schoolDropdown.contains(e.target)) {
+          schoolDropdown.style.display = "none";
+          selectedIndex = -1;
+        }
       });
 
       // DOM ready 시 로드
@@ -306,8 +478,8 @@
               school_code: schoolCodeInput.value, // [추가 기능]
             };
 
-            if (!schoolCodeInput.value) {
-              alert("학교를 선택해주세요 (학교 코드 누락)");
+            if (!schoolCodeInput.value || !schoolNameInput.value.trim()) {
+              alert("학교를 선택해주세요");
               registerBtn.disabled = false;
               registerBtn.textContent = "학습 시작하기 🚀";
               return;
