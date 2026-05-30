@@ -1,4 +1,4 @@
-const express = require("express");
+﻿const express = require("express");
 const cors = require("cors");
 const OpenAI = require("openai");
 const path = require("path");
@@ -8,6 +8,45 @@ const QRCode = require("qrcode"); // [추가 기능] QR PNG 생성
 require("dotenv").config({ path: "key.env" });
 
 const app = express();
+const isProduction = process.env.NODE_ENV === "production";
+const allowedOrigins = (process.env.ALLOWED_ORIGINS || "")
+  .split(",")
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+const sensitivePattern =
+  /(eyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}|sk-[A-Za-z0-9_-]{20,}|Bearer\s+[A-Za-z0-9._-]{20,}|password["']?\s*[:=]\s*["']?[^"',}\s]+|pin["']?\s*[:=]\s*["']?\d{4,})/gi;
+
+function redactLogValue(value) {
+  if (typeof value === "string") return value.replace(sensitivePattern, "[redacted]");
+  if (!value || typeof value !== "object") return value;
+  try {
+    return JSON.stringify(value).replace(sensitivePattern, "[redacted]");
+  } catch (_error) {
+    return "[unserializable]";
+  }
+}
+
+function safeCompare(a, b) {
+  const left = Buffer.from(String(a || ""));
+  const right = Buffer.from(String(b || ""));
+  if (left.length !== right.length) return false;
+  return crypto.timingSafeEqual(left, right);
+}
+
+const originalConsoleError = console.error.bind(console);
+const originalConsoleWarn = console.warn.bind(console);
+const originalConsoleLog = console.log.bind(console);
+console.error = (...args) => originalConsoleError(...args.map(redactLogValue));
+console.warn = (...args) => originalConsoleWarn(...args.map(redactLogValue));
+if (isProduction) {
+  console.log = () => {};
+  console.debug = () => {};
+} else {
+  console.log = (...args) => originalConsoleLog(...args.map(redactLogValue));
+}
+
+app.disable("x-powered-by");
+app.set("trust proxy", 1);
 
 // Railway V2 호환성을 위한 포트/호스트 설정 (강제 0.0.0.0)
 const port = parseInt(process.env.PORT) || 3000;
@@ -23,18 +62,34 @@ console.log(`🔧 Host: ${host}, Port: ${port}`);
 // CORS 설정 - Railway 환경을 위한 더 관대한 설정
 app.use(
   cors({
-    origin: true, // 모든 origin 허용 (Railway 프록시 포함)
+    origin(origin, callback) {
+      if (!origin || allowedOrigins.length === 0 || allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+      return callback(new Error("Blocked by CORS policy"));
+    },
     credentials: true,
   })
 );
 
-app.use(express.json());
+app.use(express.json({ limit: "32kb" }));
 
 // CORS 설정 (유니티에서 API 접근 가능하도록)
 app.use((req, res, next) => {
-  res.header("Access-Control-Allow-Origin", "*");
+  const origin = req.headers.origin;
+  if (!origin || allowedOrigins.length === 0 || allowedOrigins.includes(origin)) {
+    if (origin) res.header("Access-Control-Allow-Origin", origin);
+  }
   res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
   res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+  res.header("Vary", "Origin");
+  res.header("X-Content-Type-Options", "nosniff");
+  res.header("Referrer-Policy", "strict-origin-when-cross-origin");
+  res.header("X-Frame-Options", "SAMEORIGIN");
+  res.header("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
+  if (req.secure || req.headers["x-forwarded-proto"] === "https") {
+    res.header("Strict-Transport-Security", "max-age=63072000; includeSubDomains; preload");
+  }
 
   if (req.method === "OPTIONS") {
     res.sendStatus(200);
@@ -45,6 +100,29 @@ app.use((req, res, next) => {
 
 // 정적 파일 서빙 (HTML, CSS, JS 파일들)
 // 실행 디렉터리 변화에 영향을 받지 않도록 절대경로 기반으로 서빙
+const rateLimitBuckets = new Map();
+function rateLimit(scope, limit, windowMs) {
+  return (req, res, next) => {
+    const now = Date.now();
+    const key = `${scope}:${req.ip}`;
+    const bucket = rateLimitBuckets.get(key);
+
+    if (!bucket || bucket.resetAt <= now) {
+      rateLimitBuckets.set(key, { count: 1, resetAt: now + windowMs });
+      return next();
+    }
+
+    bucket.count += 1;
+    if (bucket.count > limit) {
+      return res
+        .status(429)
+        .set("Retry-After", String(Math.ceil((bucket.resetAt - now) / 1000)))
+        .json({ success: false, error: "Too many requests. Please try again later." });
+    }
+
+    next();
+  };
+}
 app.use(express.static(path.join(__dirname)));
 
 // [추가 기능] 간단한 쿠키 파서 및 관리자 세션 관리
@@ -81,7 +159,7 @@ function isTeacherAuthenticated(req) {
   if (!classCode || !pin) return false;
 
   const teacherSession = teacherSessions.get(classCode);
-  if (!teacherSession || teacherSession.pin !== pin) return false;
+  if (!teacherSession || !safeCompare(teacherSession.pin, pin)) return false;
 
   // 세션 만료 확인 (24시간)
   if (teacherSession.expiresAt < Date.now()) {
@@ -457,7 +535,7 @@ function generateStudentId(schoolName, grade, classNumber, studentNumber) {
 
 // 세션 ID 생성 함수
 function generateSessionId() {
-  return Math.random().toString(36).substr(2, 16) + Date.now().toString(36);
+  return crypto.randomBytes(24).toString("hex");
 }
 
 // 전체 학생 ID 생성 (기존 방식 - 호환성용)
@@ -465,6 +543,36 @@ function generateSimpleStudentId() {
   return (
     "student_" + Date.now() + "_" + Math.random().toString(36).substr(2, 9)
   );
+}
+
+function issueStudentAccessToken(student) {
+  const accessToken = crypto.randomBytes(32).toString("base64url");
+  student.accessTokenHash = crypto
+    .createHash("sha256")
+    .update(accessToken)
+    .digest("hex");
+  return accessToken;
+}
+
+function getRequestAccessToken(req) {
+  const authHeader = req.headers.authorization || "";
+  if (authHeader.startsWith("Bearer ")) return authHeader.slice(7);
+  return req.headers["x-student-token"] || "";
+}
+
+function verifyStudentAccess(req, student) {
+  const token = getRequestAccessToken(req);
+  if (!token || !student.accessTokenHash) return false;
+  const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
+  return crypto.timingSafeEqual(
+    Buffer.from(tokenHash, "hex"),
+    Buffer.from(student.accessTokenHash, "hex")
+  );
+}
+
+function sanitizeStudent(student) {
+  const { accessTokenHash, ...safeStudent } = student;
+  return safeStudent;
 }
 
 // 새로운 학생 등록 (학교 정보 포함)
@@ -498,10 +606,6 @@ app.post("/api/student/register", (req, res) => {
         return res.status(409).json({
           success: false,
           error: "이미 등록된 학생입니다.",
-          existingStudent: {
-            id: student.id,
-            name: student.studentName,
-          },
         });
       }
     }
@@ -528,11 +632,13 @@ app.post("/api/student/register", (req, res) => {
       lastAccess: new Date().toISOString(),
     };
 
+    const accessToken = issueStudentAccessToken(studentData);
     studentsData.set(newStudentId, studentData);
 
     res.json({
       success: true,
-      student: studentData,
+      student: sanitizeStudent(studentData),
+      accessToken,
     });
   } catch (error) {
     console.error("학생 등록 오류:", error);
@@ -602,11 +708,13 @@ app.post("/api/student/register-with-code", (req, res) => {
       lastAccess: new Date().toISOString(),
     };
 
+    const accessToken = issueStudentAccessToken(studentData);
     studentsData.set(newStudentId, studentData);
 
     res.json({
       success: true,
-      student: studentData,
+      student: sanitizeStudent(studentData),
+      accessToken,
     });
   } catch (error) {
     console.error("학급 코드 등록 오류:", error);
@@ -653,9 +761,14 @@ app.post("/api/student/search-by-class", (req, res) => {
       }
     }
 
+    const loginStudents = matchingStudents.map((student) => ({
+      ...sanitizeStudent(student),
+      accessToken: issueStudentAccessToken(student),
+    }));
+
     res.json({
       success: true,
-      students: matchingStudents,
+      students: loginStudents,
       classInfo: classInfo, // 학급 정보도 함께 반환
     });
   } catch (error) {
@@ -669,6 +782,8 @@ app.post("/api/student/search-by-class", (req, res) => {
 
 // 이름으로 학생 검색 (기존 방식 - 호환성용)
 app.post("/api/student/search", (req, res) => {
+  const authCheck = requireAdminAuth(req, res);
+  if (authCheck) return;
   try {
     const { studentName } = req.body;
 
@@ -683,7 +798,7 @@ app.post("/api/student/search", (req, res) => {
     const matchingStudents = [];
     for (const [id, student] of studentsData) {
       if (student.studentName && student.studentName.includes(studentName)) {
-        matchingStudents.push(student);
+        matchingStudents.push(sanitizeStudent(student));
       }
     }
 
@@ -706,10 +821,14 @@ app.post("/api/student", (req, res) => {
     const { studentId, studentName } = req.body;
 
     if (studentId && studentsData.has(studentId)) {
+      const student = studentsData.get(studentId);
+      if (!verifyStudentAccess(req, student)) {
+        return res.status(403).json({ success: false, error: "Forbidden" });
+      }
       // 기존 학생 정보 반환
       res.json({
         success: true,
-        student: studentsData.get(studentId),
+        student: sanitizeStudent(student),
       });
     } else {
       // 새 학생 생성 (기존 방식 - 호환성용)
@@ -724,11 +843,13 @@ app.post("/api/student", (req, res) => {
         lastAccess: new Date().toISOString(),
       };
 
+      const accessToken = issueStudentAccessToken(studentData);
       studentsData.set(newStudentId, studentData);
 
       res.json({
         success: true,
-        student: studentData,
+        student: sanitizeStudent(studentData),
+        accessToken,
       });
     }
   } catch (error) {
@@ -753,6 +874,9 @@ app.post("/api/progress", (req, res) => {
     }
 
     const student = studentsData.get(studentId);
+    if (!verifyStudentAccess(req, student)) {
+      return res.status(403).json({ success: false, error: "Forbidden" });
+    }
 
     // 페이지 완료 표시
     if (!student.completedPages.includes(pageId)) {
@@ -776,7 +900,7 @@ app.post("/api/progress", (req, res) => {
 
     res.json({
       success: true,
-      student: student,
+      student: sanitizeStudent(student),
     });
   } catch (error) {
     console.error("진도 저장 오류:", error);
@@ -800,12 +924,15 @@ app.get("/api/progress/:studentId", (req, res) => {
     }
 
     const student = studentsData.get(studentId);
+    if (!verifyStudentAccess(req, student)) {
+      return res.status(403).json({ success: false, error: "Forbidden" });
+    }
     student.lastAccess = new Date().toISOString();
     studentsData.set(studentId, student);
 
     res.json({
       success: true,
-      student: student,
+      student: sanitizeStudent(student),
     });
   } catch (error) {
     console.error("진도 조회 오류:", error);
@@ -818,6 +945,8 @@ app.get("/api/progress/:studentId", (req, res) => {
 
 // 디버깅용 테스트 엔드포인트
 app.get("/api/progress/test", (req, res) => {
+  const authCheck = requireAdminAuth(req, res);
+  if (authCheck) return;
   try {
     const serverStatus = {
       success: true,
@@ -842,6 +971,8 @@ app.get("/api/progress/test", (req, res) => {
 
 // 전체 학생 목록 조회 (관리용)
 app.get("/api/students", (req, res) => {
+  const authCheck = requireAdminAuth(req, res);
+  if (authCheck) return;
   try {
     const students = Array.from(studentsData.values()).map((student) => ({
       id: student.id,
@@ -877,7 +1008,8 @@ app.post("/api/admin/reset", (req, res) => {
     const { confirmPassword } = req.body;
 
     // 간단한 비밀번호 확인 (실제 운영에서는 더 보안적인 방법 사용)
-    if (confirmPassword !== "reset2024") {
+    const resetPassword = process.env.ADMIN_RESET_PASS || process.env.ADMIN_PASS;
+    if (!resetPassword || confirmPassword !== resetPassword) {
       return res.status(403).json({
         success: false,
         error: "비밀번호가 틀렸습니다.",
@@ -947,8 +1079,20 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
+const promptInjectionPattern =
+  /(ignore\s+(all\s+)?previous|system\s+prompt|developer\s+message|print\s+instructions|reveal\s+(the\s+)?prompt|api\s*key|secret)/i;
+
+function normalizeAiInput(value, maxLength = 500) {
+  const text = String(value ?? "").replace(/[\u0000-\u001f\u007f]/g, " ").trim();
+  return text.slice(0, maxLength);
+}
+
+function hasPromptInjectionAttempt(...values) {
+  return values.some((value) => promptInjectionPattern.test(String(value ?? "")));
+}
+
 // [추가 기능] 관리자 로그인/세션 확인
-app.post("/api/admin/login", (req, res) => {
+app.post("/api/admin/login", rateLimit("admin-login", 5, 15 * 60 * 1000), (req, res) => {
   try {
     const { password } = req.body || {};
     const adminPass = process.env.ADMIN_PASS;
@@ -957,10 +1101,10 @@ app.post("/api/admin/login", (req, res) => {
         .status(500)
         .json({ success: false, error: "서버 ADMIN_PASS 미설정" });
     }
-    if (password !== adminPass) {
+    if (!safeCompare(password, adminPass)) {
       return res
         .status(401)
-        .json({ success: false, error: "비밀번호가 올바르지 않습니다." });
+        .json({ success: false, error: "로그인 정보를 확인할 수 없습니다." });
     }
     const sessionId = crypto.randomBytes(24).toString("hex");
     adminSessions.set(sessionId, {
@@ -970,7 +1114,7 @@ app.post("/api/admin/login", (req, res) => {
       "Set-Cookie",
       `admin_session=${sessionId}; HttpOnly; SameSite=Lax; Max-Age=${
         60 * 60 * 2
-      }; Path=/`
+      }; Path=/${isProduction ? "; Secure" : ""}`
     );
     res.json({ success: true });
   } catch (error) {
@@ -980,7 +1124,7 @@ app.post("/api/admin/login", (req, res) => {
 });
 
 // 교사 로그인 API (학급 코드 + PIN)
-app.post("/api/admin/teacher-login", (req, res) => {
+app.post("/api/admin/teacher-login", rateLimit("teacher-login", 10, 15 * 60 * 1000), (req, res) => {
   try {
     const { classCode, pin } = req.body;
 
@@ -992,7 +1136,7 @@ app.post("/api/admin/teacher-login", (req, res) => {
     }
 
     const teacherSession = teacherSessions.get(classCode);
-    if (!teacherSession || teacherSession.pin !== pin) {
+    if (!teacherSession || !safeCompare(teacherSession.pin, pin)) {
       return res.status(401).json({
         success: false,
         error: "잘못된 학급 코드 또는 PIN입니다.",
@@ -1037,7 +1181,7 @@ app.get("/api/admin/session", (req, res) => {
     const teacherSession = teacherSessions.get(classCode);
     if (
       teacherSession &&
-      teacherSession.pin === pin &&
+      safeCompare(teacherSession.pin, pin) &&
       teacherSession.expiresAt > Date.now()
     ) {
       return res.json({ success: true, type: "teacher" });
@@ -1364,7 +1508,10 @@ app.post("/api/admin/qr-token", (req, res) => {
     }
     const exp = Date.now() + 1000 * (expiresInSec || 60 * 60 * 24 * 7);
     const payload = `${classCode}|${exp}`;
-    const secret = process.env.QR_SECRET || "dev-secret";
+    const secret = process.env.QR_SECRET;
+    if (!secret) {
+      return res.status(500).json({ success: false, error: "QR secret is not configured." });
+    }
     const sig = crypto
       .createHmac("sha256", secret)
       .update(payload)
@@ -1417,7 +1564,8 @@ app.get("/r/:token", (req, res) => {
     const exp = parseInt(expStr, 10);
     if (!classCode || !exp || !sig)
       return res.redirect("/student-register.html?error=invalid");
-    const secret = process.env.QR_SECRET || "dev-secret";
+    const secret = process.env.QR_SECRET;
+    if (!secret) return res.redirect("/student-register.html?error=invalid");
     const expectedSig = crypto
       .createHmac("sha256", secret)
       .update(`${classCode}|${exp}`)
@@ -1438,13 +1586,21 @@ app.get("/r/:token", (req, res) => {
 });
 
 // 유니티용 AI 피드백 엔드포인트 (CORS 설정 포함)
-app.post("/unity/feedback", async (req, res) => {
+app.post("/unity/feedback", rateLimit("ai-feedback", 30, 60 * 1000), async (req, res) => {
   // CORS 헤더 추가 (유니티에서 접근 가능하도록)
   res.header("Access-Control-Allow-Origin", "*");
   res.header("Access-Control-Allow-Headers", "Content-Type");
 
   try {
-    const { question, correctAnswer, studentAnswer, gameContext } = req.body;
+    const question = normalizeAiInput(req.body.question);
+    const correctAnswer = normalizeAiInput(req.body.correctAnswer, 200);
+    const studentAnswer = normalizeAiInput(req.body.studentAnswer, 200);
+    const gameContext = normalizeAiInput(req.body.gameContext, 300);
+
+    if (hasPromptInjectionAttempt(question, correctAnswer, studentAnswer, gameContext)) {
+      console.warn("Blocked prompt injection attempt", { ip: req.ip });
+      return res.status(400).json({ success: false, error: "Invalid request." });
+    }
 
     // 게임 맥락을 고려한 프롬프트
     const prompt = `
@@ -1505,9 +1661,16 @@ app.post("/unity/feedback", async (req, res) => {
 });
 
 // 웹용 AI 피드백 엔드포인트 (기존)
-app.post("/chat", async (req, res) => {
+app.post("/chat", rateLimit("ai-chat", 30, 60 * 1000), async (req, res) => {
   try {
-    const { question, correctAnswer, studentAnswer } = req.body;
+    const question = normalizeAiInput(req.body.question);
+    const correctAnswer = normalizeAiInput(req.body.correctAnswer, 200);
+    const studentAnswer = normalizeAiInput(req.body.studentAnswer, 200);
+
+    if (hasPromptInjectionAttempt(question, correctAnswer, studentAnswer)) {
+      console.warn("Blocked prompt injection attempt", { ip: req.ip });
+      return res.status(400).json({ success: false, error: "Invalid request." });
+    }
 
     const prompt = `
 문제: ${question}

@@ -145,6 +145,19 @@ const pageConfig = {
   // 현재 학생 정보
   currentStudent: null,
 
+  getStudentAuthHeaders: function () {
+    const token = localStorage.getItem("studentAccessToken");
+    return token ? { Authorization: `Bearer ${token}` } : {};
+  },
+
+  saveStudentSession: function (student, accessToken) {
+    localStorage.setItem("studentId", student.id);
+    localStorage.setItem("studentInfo", JSON.stringify(student));
+    if (accessToken) {
+      localStorage.setItem("studentAccessToken", accessToken);
+    }
+  },
+
   // 학생 초기화 (페이지 로드시 호출)
   initStudent: async function () {
     try {
@@ -173,6 +186,7 @@ const pageConfig = {
       console.log(`🌐 서버에서 학생 정보 요청: /api/progress/${studentId}`);
       const response = await fetch(`/api/progress/${studentId}`, {
         method: "GET",
+        headers: this.getStudentAuthHeaders(),
       });
 
       console.log("🌐 서버 응답 상태:", response.status, response.statusText);
@@ -226,7 +240,10 @@ const pageConfig = {
 
             if (reregisterData.success) {
               // 새로운 학생 ID로 업데이트
-              localStorage.setItem("studentId", reregisterData.student.id);
+              this.saveStudentSession(
+                reregisterData.student,
+                reregisterData.accessToken
+              );
 
               // 이전 데이터 정리
               this.clearStudentData();
@@ -458,6 +475,7 @@ const pageConfig = {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
+            ...this.getStudentAuthHeaders(),
           },
           body: JSON.stringify({
             studentId: this.currentStudent.id,
@@ -554,6 +572,7 @@ const pageConfig = {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
+            ...this.getStudentAuthHeaders(),
           },
           body: JSON.stringify({
             studentId: this.currentStudent.id,
@@ -674,6 +693,7 @@ const pageConfig = {
 
     // 기타 이전 데이터 정리
     localStorage.removeItem("completedPages");
+    localStorage.removeItem("studentAccessToken");
 
     console.log("✅ 이전 학생 데이터 정리 완료");
   },

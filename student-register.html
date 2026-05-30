@@ -514,6 +514,9 @@
               // 로컬스토리지에 학생 ID 저장
               localStorage.setItem("studentId", data.student.id);
               localStorage.setItem("studentInfo", JSON.stringify(data.student));
+              if (data.accessToken) {
+                localStorage.setItem("studentAccessToken", data.accessToken);
+              }
 
               // 메인 페이지로 이동
               alert(
@@ -564,6 +567,9 @@
                 const student = data.students[0];
                 localStorage.setItem("studentId", student.id);
                 localStorage.setItem("studentInfo", JSON.stringify(student));
+                if (student.accessToken) {
+                  localStorage.setItem("studentAccessToken", student.accessToken);
+                }
                 alert(
                   `${student.studentName}님 (${student.schoolName} ${student.grade}학년 ${student.classNumber}반 ${student.studentNumber}번)으로 로그인합니다.`
                 );
@@ -588,6 +594,12 @@
                     "studentInfo",
                     JSON.stringify(selectedStudent)
                   );
+                  if (selectedStudent.accessToken) {
+                    localStorage.setItem(
+                      "studentAccessToken",
+                      selectedStudent.accessToken
+                    );
+                  }
                   alert(
                     `${selectedStudent.studentName}님 (${selectedStudent.studentNumber}번)으로 로그인합니다.`
                   );
@@ -640,6 +652,9 @@
             if (data.success) {
               localStorage.setItem("studentId", data.student.id);
               localStorage.setItem("studentInfo", JSON.stringify(data.student));
+              if (data.accessToken) {
+                localStorage.setItem("studentAccessToken", data.accessToken);
+              }
               alert(
                 `${data.student.studentName}님, 등록이 완료되었습니다!\n${data.student.schoolName} ${data.student.grade}학년 ${data.student.classNumber}반으로 등록되었습니다.`
               );
